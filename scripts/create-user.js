@@ -1,23 +1,22 @@
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
+const { PrismaClient } = require("../src/generated/prisma");
+const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
 
 async function main() {
   try {
     // Default admin user credentials
-    const email = 'admin@example.com';
-    const password = 'Admin@123';
-    const name = 'Admin User';
-    const role = 'ADMIN';
+    const username = "admin";
+    const password = "Admin@123";
+    const role = "admin"; // lowercase as per enum
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { username },
     });
 
     if (existingUser) {
-      console.log(`User with email ${email} already exists.`);
+      console.log(`User with username ${username} already exists.`);
       return;
     }
 
@@ -27,17 +26,18 @@ async function main() {
     // Create the user
     const user = await prisma.user.create({
       data: {
-        email,
-        name,
-        password: hashedPassword,
+        username,
+        password_hash: hashedPassword,
         role,
         is_active: true,
       },
     });
 
-    console.log(`Created user with email: ${user.email} and role: ${user.role}`);
+    console.log(
+      `Created user with username: ${user.username} and role: ${user.role}`
+    );
   } catch (error) {
-    console.error('Error creating user:', error);
+    console.error("Error creating user:", error);
   } finally {
     await prisma.$disconnect();
   }
