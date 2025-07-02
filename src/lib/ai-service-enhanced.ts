@@ -61,7 +61,9 @@ export async function analyzeQueryForSearch(
       };
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash-preview-05-20",
+    });
 
     // Build conversation context
     const recentHistory = conversationHistory.slice(-6); // Last 3 exchanges
@@ -251,7 +253,7 @@ export async function searchDatabaseEnhanced(
           COALESCE(ts_rank(search_vector, plainto_tsquery('english', $2)), 0)
         ) DESC,
         entry_date_real DESC
-      LIMIT $5
+      LIMIT $3
     `,
       cleanQuery, // Complex query with | operators
       simpleQuery, // Simple space-separated terms
@@ -420,7 +422,9 @@ export async function generateAIResponse(
   queryType: string = "specific_search"
 ): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash-preview-05-20",
+    });
 
     // Build conversation context for follow-up questions
     const recentHistory = conversationHistory.slice(-4); // Last 2 exchanges
@@ -498,7 +502,7 @@ Please provide a helpful response based on the database records above.`;
 export async function processChatMessageEnhanced(
   question: string,
   conversationHistory: ChatMessage[] = [],
-  searchLimit: number = 8,
+  searchLimit: number = 100,
   useEnhancedSearch: boolean = true
 ): Promise<{
   response: string;
@@ -516,7 +520,7 @@ export async function processChatMessageEnhanced(
   try {
     console.log(`[CHAT ANALYSIS] Processing query: "${question}"`);
     console.log(
-      `[CHAT ANALYSIS] Conversation history length: ${conversationHistory.length}`
+      `[CHAT ANALYSIS] Conversation history length: ${conversationHistory.length}` // Increased from 4 to 100
     );
 
     // Analyze the query to understand intent and extract search keywords

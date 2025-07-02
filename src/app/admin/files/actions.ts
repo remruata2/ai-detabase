@@ -98,6 +98,45 @@ function htmlToPlainText(html: string | null | undefined): string | null {
   return text || null;
 }
 
+// Create complete plain text with file information prepended
+const imagePlaceholder = "[Image removed - please upload images separately]";
+
+const removeImagePlaceholder = (content: string | null | undefined): string => {
+  if (!content) return "";
+  // This regex replaces the placeholder, along with any surrounding whitespace (like empty paragraphs)
+  return content
+    .replace(
+      new RegExp(
+        imagePlaceholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
+        "g"
+      ),
+      ""
+    )
+    .trim();
+};
+
+const createCompletePlainText = (
+  fileNo: string,
+  category: string,
+  title: string,
+  noteContent: string | null | undefined
+): string | null => {
+  // Create the file information header
+  const fileInfo = `File No - ${fileNo}
+Category - ${category}
+Title - ${title}`;
+
+  // Convert note HTML to plain text
+  const notePlainText = htmlToPlainText(noteContent);
+
+  // Combine file info with note content
+  if (notePlainText && notePlainText.trim()) {
+    return `${fileInfo}\n\n${notePlainText}`;
+  } else {
+    return fileInfo;
+  }
+};
+
 // Zod schema for file validation
 const fileSchema = z.object({
   file_no: z
@@ -285,17 +324,13 @@ export async function createFileAction(
 ): Promise<ActionResponse> {
   ensureUploadDirExists();
 
+  // 1. Extract file and validate the rest of the form data
   const file = formData.get("doc1") as File | null;
-  let doc1Path: string | null = null;
-
-  // Create a new FormData for Zod validation, excluding the file object
-  const formDataForZod = new FormData();
-  for (const [key, value] of formData.entries()) {
-    if (key !== "doc1") {
-      formDataForZod.append(key, value);
-    }
+  const rawFormData = Object.fromEntries(formData.entries());
+  if (file && file.size === 0) {
+    delete rawFormData.doc1;
   }
-  const rawFormData = Object.fromEntries(formDataForZod.entries());
+
   const validatedFields = fileSchema.safeParse(rawFormData);
 
   if (!validatedFields.success) {
@@ -306,17 +341,20 @@ export async function createFileAction(
     };
   }
 
-  // File upload handling
+  // 2. Clean the note content
+  const cleanedNote = removeImagePlaceholder(validatedFields.data.note);
+
+  // 3. Handle file upload
+  let doc1Path: string | null = null;
   if (file && file.size > 0) {
     try {
       const buffer = Buffer.from(await file.arrayBuffer());
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      // Sanitize filename to prevent path traversal and other issues
       const sanitizedOriginalName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const filename = uniqueSuffix + "-" + sanitizedOriginalName;
       const filePath = path.join(UPLOAD_DIR, filename);
       await fs.writeFile(filePath, buffer);
-      doc1Path = `/uploads/documents/${filename}`; // Public path to be stored in DB
+      doc1Path = `/uploads/documents/${filename}`;
       console.log(`File uploaded successfully: ${doc1Path}`);
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -324,8 +362,17 @@ export async function createFileAction(
     }
   }
 
-  const { entry_date, ...dataToCreate } = validatedFields.data;
-  let entryDateReal = null;
+  // 4. Prepare data for database insertion
+  const { note, entry_date, ...restOfData } = validatedFields.data;
+
+  const notePlainText = createCompletePlainText(
+    restOfData.file_no,
+    restOfData.category,
+    restOfData.title,
+    cleanedNote
+  );
+
+  let entryDateReal: Date | null = null;
   if (entry_date && entry_date.trim() !== "") {
     const parsedDate = new Date(entry_date);
     if (!isNaN(parsedDate.getTime())) {
@@ -333,20 +380,33 @@ export async function createFileAction(
     }
   }
 
-  const { note, ...restOfData } = validatedFields.data;
-  const notePlainText = htmlToPlainText(note);
-
+  // 5. Create the file record in the database
   try {
-    await prisma.fileList.create({
+    const newFile = await prisma.fileList.create({
       data: {
         ...restOfData,
-        note: note, // Store HTML content
+        note: cleanedNote, // Store cleaned HTML content
         note_plain_text: notePlainText,
-        doc1: doc1Path, // Add the uploaded file path
-        entry_date: entry_date, // Keep original string for entry_date
-        entry_date_real: entryDateReal, // Store parsed Date or null
+        doc1: doc1Path,
+        entry_date: entry_date,
+        entry_date_real: entryDateReal,
       },
     });
+
+    // 6. Update the search vector
+    await prisma.$executeRaw`
+      UPDATE file_list 
+      SET search_vector = to_tsvector('english', 
+        COALESCE(file_no, '') || ' ' || 
+        COALESCE(category, '') || ' ' || 
+        COALESCE(title, '') || ' ' || 
+        COALESCE(note_plain_text, '') || ' ' ||
+        COALESCE(entry_date, '') || ' ' ||
+        COALESCE(EXTRACT(YEAR FROM entry_date_real)::text, '')
+      )
+      WHERE id = ${newFile.id}
+    `;
+
     revalidatePath("/admin/files");
     return { success: true, message: "File created successfully." };
   } catch (error) {
@@ -361,16 +421,13 @@ export async function updateFileAction(
 ): Promise<ActionResponse> {
   ensureUploadDirExists();
 
+  // 1. Extract file and validate the rest of the form data
   const file = formData.get("doc1") as File | null;
-
-  // Create a new FormData for Zod validation, excluding the file object
-  const formDataForZod = new FormData();
-  for (const [key, value] of formData.entries()) {
-    if (key !== "doc1") {
-      formDataForZod.append(key, value);
-    }
+  const rawFormData = Object.fromEntries(formData.entries());
+  if (file && file.size === 0) {
+    delete rawFormData.doc1;
   }
-  const rawFormData = Object.fromEntries(formDataForZod.entries());
+
   const validatedFields = fileSchema.safeParse(rawFormData);
 
   if (!validatedFields.success) {
@@ -381,68 +438,53 @@ export async function updateFileAction(
     };
   }
 
-  const { entry_date, ...dataFromForm } = validatedFields.data; // dataFromForm excludes doc1
+  // 2. Clean the note content
+  const cleanedNote = removeImagePlaceholder(validatedFields.data.note);
+
+  // 3. Prepare data for database update
+  const { note, entry_date, ...restOfData } = validatedFields.data;
+
+  const notePlainText = createCompletePlainText(
+    restOfData.file_no,
+    restOfData.category,
+    restOfData.title,
+    cleanedNote
+  );
+
+  let entryDateReal: Date | null = null;
+  if (entry_date && entry_date.trim() !== "") {
+    const parsedDate = new Date(entry_date);
+    if (!isNaN(parsedDate.getTime())) {
+      entryDateReal = parsedDate;
+    }
+  } else if (entry_date === "") {
+    entryDateReal = null;
+  }
 
   const prismaDataForUpdate: any = {
-    ...dataFromForm,
-    note: validatedFields.data.note,
-    note_plain_text: htmlToPlainText(validatedFields.data.note),
+    ...restOfData,
+    note: cleanedNote,
+    note_plain_text: notePlainText,
     entry_date: entry_date,
-    // Explicitly set other doc fields to null to clear them as per previous step
-    doc2: null,
-    doc3: null,
-    doc4: null,
-    doc5: null,
-    doc6: null,
+    entry_date_real: entryDateReal,
   };
 
-  let entryDateReal = null;
-  if (entry_date && entry_date.trim() !== "") {
-    const parsedDate = new Date(entry_date);
-    if (!isNaN(parsedDate.getTime())) {
-      entryDateReal = parsedDate;
-    }
-  } else if (entry_date === "") {
-    entryDateReal = null; // Explicitly set to null if input is empty string
-  }
-
-  // Handle entry_date_real conversion (copied from existing logic)
-  if (entry_date && entry_date.trim() !== "") {
-    const parsedDate = new Date(entry_date);
-    if (!isNaN(parsedDate.getTime())) {
-      entryDateReal = parsedDate;
-    }
-  } else if (entry_date === "") {
-    entryDateReal = null; // Explicitly set to null if input is empty string
-  }
-  prismaDataForUpdate.entry_date_real = entryDateReal;
-
-  // File upload handling for update
+  // 4. Handle file upload for update
   if (file && file.size > 0) {
-    // A new file is being uploaded
     try {
-      // Get current doc1 to delete old file if it exists
       const existingFileRecord = await prisma.fileList.findUnique({
         where: { id },
         select: { doc1: true },
       });
 
       if (existingFileRecord?.doc1) {
-        const oldFilePathServer = path.join(
-          process.cwd(),
-          "public",
-          existingFileRecord.doc1
-        );
+        const oldFilePathServer = path.join(process.cwd(), "public", existingFileRecord.doc1);
         if (existsSync(oldFilePathServer)) {
           try {
             await fs.unlink(oldFilePathServer);
             console.log(`Old file deleted: ${oldFilePathServer}`);
           } catch (delError) {
-            console.error(
-              `Error deleting old file ${oldFilePathServer}:`,
-              delError
-            );
-            // Decide if this should be a hard error or just a warning
+            console.error(`Error deleting old file ${oldFilePathServer}:`, delError);
           }
         }
       }
@@ -453,10 +495,8 @@ export async function updateFileAction(
       const filename = uniqueSuffix + "-" + sanitizedOriginalName;
       const newFilePathOnServer = path.join(UPLOAD_DIR, filename);
       await fs.writeFile(newFilePathOnServer, buffer);
-      prismaDataForUpdate.doc1 = `/uploads/documents/${filename}`; // Update with new public path
-      console.log(
-        `New file uploaded successfully: ${prismaDataForUpdate.doc1}`
-      );
+      prismaDataForUpdate.doc1 = `/uploads/documents/${filename}`;
+      console.log(`New file uploaded successfully: ${prismaDataForUpdate.doc1}`);
     } catch (error) {
       console.error("Error uploading file during update:", error);
       return {
@@ -464,18 +504,29 @@ export async function updateFileAction(
         error: "File upload failed during update. Please try again.",
       };
     }
-  } else {
-    // No new file uploaded. If 'doc1' was part of formData (e.g. an empty string from a text input to clear it),
-    // it would be handled here. But for type="file", if no file is selected, it's not in formData.
-    // So, if prismaDataForUpdate.doc1 is not set here, Prisma won't update it, preserving the old value.
-    // This is the desired behavior: only update doc1 if a new file is explicitly provided.
   }
 
+  // 5. Update the file record in the database
   try {
     await prisma.fileList.update({
       where: { id },
       data: prismaDataForUpdate,
     });
+
+    // 6. Update the search vector
+    await prisma.$executeRaw`
+      UPDATE file_list 
+      SET search_vector = to_tsvector('english', 
+        COALESCE(file_no, '') || ' ' || 
+        COALESCE(category, '') || ' ' || 
+        COALESCE(title, '') || ' ' || 
+        COALESCE(note_plain_text, '') || ' ' ||
+        COALESCE(entry_date, '') || ' ' ||
+        COALESCE(EXTRACT(YEAR FROM entry_date_real)::text, '')
+      )
+      WHERE id = ${id}
+    `;
+
     revalidatePath("/admin/files");
     revalidatePath(`/admin/files/${id}/edit`);
     return { success: true, message: "File updated successfully." };

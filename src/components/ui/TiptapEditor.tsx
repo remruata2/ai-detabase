@@ -177,122 +177,145 @@ function EditorToolbar({ editor }: { editor: any }) {
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-1 p-2 border-b border-gray-200 bg-gray-50">
+    <div className="flex flex-wrap items-center gap-1 p-2 sm:p-3 border-b border-gray-200 bg-gray-50 overflow-x-auto">
       {/* Undo/Redo */}
-      <button
-        onClick={() => editor.chain().focus().undo().run()}
-        disabled={!editor.can().chain().focus().undo().run()}
-        className="p-2 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        title="Undo"
-      >
-        <Undo size={16} />
-      </button>
-      <button
-        onClick={() => editor.chain().focus().redo().run()}
-        disabled={!editor.can().chain().focus().redo().run()}
-        className="p-2 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        title="Redo"
-      >
-        <Redo size={16} />
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().undo().run()}
+          disabled={!editor.can().chain().focus().undo().run()}
+          className="p-2 sm:p-2.5 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+          title="Undo"
+        >
+          <Undo size={16} className="sm:w-4 sm:h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().redo().run()}
+          disabled={!editor.can().chain().focus().redo().run()}
+          className="p-2 sm:p-2.5 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+          title="Redo"
+        >
+          <Redo size={16} className="sm:w-4 sm:h-4" />
+        </button>
+      </div>
 
-      <div className="h-6 w-px bg-gray-300 mx-1" />
+      <div className="h-6 w-px bg-gray-300 mx-1 hidden sm:block" />
 
       {/* Headings */}
-      <select
-        onChange={(e) => {
-          const level = parseInt(e.target.value);
-          if (level === 0) {
-            editor.chain().focus().setParagraph().run();
-          } else {
-            editor.chain().focus().toggleHeading({ level }).run();
+      <div className="flex items-center">
+        <select
+          onChange={(e) => {
+            const level = parseInt(e.target.value);
+            if (level === 0) {
+              editor.chain().focus().setParagraph().run();
+            } else {
+              editor.chain().focus().toggleHeading({ level }).run();
+            }
+          }}
+          value={
+            editor.isActive("heading", { level: 1 })
+              ? 1
+              : editor.isActive("heading", { level: 2 })
+              ? 2
+              : editor.isActive("heading", { level: 3 })
+              ? 3
+              : editor.isActive("heading", { level: 4 })
+              ? 4
+              : editor.isActive("heading", { level: 5 })
+              ? 5
+              : editor.isActive("heading", { level: 6 })
+              ? 6
+              : 0
           }
-        }}
-        value={
-          editor.isActive("heading", { level: 1 })
-            ? 1
-            : editor.isActive("heading", { level: 2 })
-            ? 2
-            : editor.isActive("heading", { level: 3 })
-            ? 3
-            : editor.isActive("heading", { level: 4 })
-            ? 4
-            : editor.isActive("heading", { level: 5 })
-            ? 5
-            : editor.isActive("heading", { level: 6 })
-            ? 6
-            : 0
-        }
-        className="px-2 py-1 border border-gray-300 rounded text-sm"
-      >
-        <option value={0}>Paragraph</option>
-        <option value={1}>Heading 1</option>
-        <option value={2}>Heading 2</option>
-        <option value={3}>Heading 3</option>
-        <option value={4}>Heading 4</option>
-        <option value={5}>Heading 5</option>
-        <option value={6}>Heading 6</option>
-      </select>
+          className="px-2 py-1.5 sm:py-1 border border-gray-300 rounded text-xs sm:text-sm min-w-0 w-20 sm:w-auto"
+        >
+          <option value={0}>Normal</option>
+          <option value={1}>H1</option>
+          <option value={2}>H2</option>
+          <option value={3}>H3</option>
+          <option value={4}>H4</option>
+          <option value={5}>H5</option>
+          <option value={6}>H6</option>
+        </select>
+      </div>
 
-      <div className="h-6 w-px bg-gray-300 mx-1" />
+      <div className="h-6 w-px bg-gray-300 mx-1 hidden sm:block" />
 
       {/* Text Formatting */}
-      <button
-        onClick={() => editor.chain().focus().toggleBold().run()}
-        disabled={!editor.can().chain().focus().toggleBold().run()}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive("bold") ? "bg-blue-200" : ""
-        }`}
-        title="Bold"
-      >
-        <Bold size={16} />
-      </button>
-      <button
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-        disabled={!editor.can().chain().focus().toggleItalic().run()}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive("italic") ? "bg-blue-200" : ""
-        }`}
-        title="Italic"
-      >
-        <Italic size={16} />
-      </button>
-      <button
-        onClick={() => editor.chain().focus().toggleUnderline().run()}
-        disabled={!editor.can().chain().focus().toggleUnderline().run()}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive("underline") ? "bg-blue-200" : ""
-        }`}
-        title="Underline"
-      >
-        <UnderlineIcon size={16} />
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          disabled={!editor.can().chain().focus().toggleBold().run()}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive("bold") ? "bg-blue-200" : ""
+          }`}
+          title="Bold"
+        >
+          <Bold size={16} className="sm:w-4 sm:h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          disabled={!editor.can().chain().focus().toggleItalic().run()}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive("italic") ? "bg-blue-200" : ""
+          }`}
+          title="Italic"
+        >
+          <Italic size={16} className="sm:w-4 sm:h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          disabled={!editor.can().chain().focus().toggleUnderline().run()}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive("underline") ? "bg-blue-200" : ""
+          }`}
+          title="Underline"
+        >
+          <UnderlineIcon size={16} className="sm:w-4 sm:h-4" />
+        </button>
+      </div>
 
       {/* Text Color */}
       <div className="relative">
         <button
-          onClick={() => setShowColorPicker(!showColorPicker)}
-          className="p-2 rounded hover:bg-gray-200"
+          type="button"
+          onClick={() => {
+            setShowColorPicker(!showColorPicker);
+            setShowHighlightPicker(false);
+          }}
+          className="p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation"
           title="Text Color"
         >
-          <Palette size={16} />
+          <Palette size={16} className="sm:w-4 sm:h-4" />
         </button>
         {showColorPicker && (
-          <div className="absolute top-full left-0 z-10 bg-white border border-gray-300 rounded-lg shadow-lg p-2 w-64">
-            <div className="grid grid-cols-10 gap-1">
+          <div className="absolute top-full left-0 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-2 w-56 sm:w-64 max-w-[calc(100vw-2rem)]">
+            <div className="grid grid-cols-8 sm:grid-cols-10 gap-1">
               {colors.map((color) => (
                 <button
+                  type="button"
                   key={color}
                   onClick={() => {
                     editor.chain().focus().setColor(color).run();
                     setShowColorPicker(false);
                   }}
-                  className="w-6 h-6 rounded border border-gray-300 hover:border-gray-500"
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded border border-gray-300 hover:border-gray-500 touch-manipulation"
                   style={{ backgroundColor: color }}
                   title={color}
                 />
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setShowColorPicker(false)}
+              className="mt-2 w-full px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200"
+            >
+              Close
+            </button>
           </div>
         )}
       </div>
@@ -300,140 +323,165 @@ function EditorToolbar({ editor }: { editor: any }) {
       {/* Highlight */}
       <div className="relative">
         <button
-          onClick={() => setShowHighlightPicker(!showHighlightPicker)}
-          className={`p-2 rounded hover:bg-gray-200 ${
+          type="button"
+          onClick={() => {
+            setShowHighlightPicker(!showHighlightPicker);
+            setShowColorPicker(false);
+          }}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
             editor.isActive("highlight") ? "bg-blue-200" : ""
           }`}
           title="Highlight"
         >
-          <Highlighter size={16} />
+          <Highlighter size={16} className="sm:w-4 sm:h-4" />
         </button>
         {showHighlightPicker && (
-          <div className="absolute top-full left-0 z-10 bg-white border border-gray-300 rounded-lg shadow-lg p-2 w-32">
-            <div className="grid grid-cols-6 gap-1">
+          <div className="absolute top-full left-0 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-2 w-32 sm:w-36">
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-1">
               {highlights.map((color) => (
                 <button
+                  type="button"
                   key={color}
                   onClick={() => {
                     editor.chain().focus().toggleHighlight({ color }).run();
                     setShowHighlightPicker(false);
                   }}
-                  className="w-6 h-6 rounded border border-gray-300 hover:border-gray-500"
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded border border-gray-300 hover:border-gray-500 touch-manipulation"
                   style={{ backgroundColor: color }}
                   title={color}
                 />
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setShowHighlightPicker(false)}
+              className="mt-2 w-full px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200"
+            >
+              Close
+            </button>
           </div>
         )}
       </div>
 
-      <div className="h-6 w-px bg-gray-300 mx-1" />
+      <div className="h-6 w-px bg-gray-300 mx-1 hidden sm:block" />
 
       {/* Lists */}
-      <button
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive("bulletList") ? "bg-blue-200" : ""
-        }`}
-        title="Bullet List"
-      >
-        <List size={16} />
-      </button>
-      <button
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive("orderedList") ? "bg-blue-200" : ""
-        }`}
-        title="Numbered List"
-      >
-        <ListOrdered size={16} />
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive("bulletList") ? "bg-blue-200" : ""
+          }`}
+          title="Bullet List"
+        >
+          <List size={16} className="sm:w-4 sm:h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive("orderedList") ? "bg-blue-200" : ""
+          }`}
+          title="Numbered List"
+        >
+          <ListOrdered size={16} className="sm:w-4 sm:h-4" />
+        </button>
+      </div>
 
-      <div className="h-6 w-px bg-gray-300 mx-1" />
+      <div className="h-6 w-px bg-gray-300 mx-1 hidden sm:block" />
 
       {/* Alignment */}
-      <button
-        onClick={() => editor.chain().focus().setTextAlign("left").run()}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive({ textAlign: "left" }) ? "bg-blue-200" : ""
-        }`}
-        title="Align Left"
-      >
-        <AlignLeft size={16} />
-      </button>
-      <button
-        onClick={() => editor.chain().focus().setTextAlign("center").run()}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive({ textAlign: "center" }) ? "bg-blue-200" : ""
-        }`}
-        title="Align Center"
-      >
-        <AlignCenter size={16} />
-      </button>
-      <button
-        onClick={() => editor.chain().focus().setTextAlign("right").run()}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive({ textAlign: "right" }) ? "bg-blue-200" : ""
-        }`}
-        title="Align Right"
-      >
-        <AlignRight size={16} />
-      </button>
-      <button
-        onClick={() => editor.chain().focus().setTextAlign("justify").run()}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive({ textAlign: "justify" }) ? "bg-blue-200" : ""
-        }`}
-        title="Justify"
-      >
-        <AlignJustify size={16} />
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().setTextAlign("left").run()}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive({ textAlign: "left" }) ? "bg-blue-200" : ""
+          }`}
+          title="Align Left"
+        >
+          <AlignLeft size={16} className="sm:w-4 sm:h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().setTextAlign("center").run()}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive({ textAlign: "center" }) ? "bg-blue-200" : ""
+          }`}
+          title="Align Center"
+        >
+          <AlignCenter size={16} className="sm:w-4 sm:h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().setTextAlign("right").run()}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive({ textAlign: "right" }) ? "bg-blue-200" : ""
+          }`}
+          title="Align Right"
+        >
+          <AlignRight size={16} className="sm:w-4 sm:h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().setTextAlign("justify").run()}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive({ textAlign: "justify" }) ? "bg-blue-200" : ""
+          }`}
+          title="Justify"
+        >
+          <AlignJustify size={16} className="sm:w-4 sm:h-4" />
+        </button>
+      </div>
 
-      <div className="h-6 w-px bg-gray-300 mx-1" />
+      <div className="h-6 w-px bg-gray-300 mx-1 hidden sm:block" />
 
-      {/* Link */}
-      <button
-        onClick={addLink}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive("link") ? "bg-blue-200" : ""
-        }`}
-        title="Add Link"
-      >
-        <LinkIcon size={16} />
-      </button>
+      {/* Additional Tools */}
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={addLink}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive("link") ? "bg-blue-200" : ""
+          }`}
+          title="Add Link"
+        >
+          <LinkIcon size={16} className="sm:w-4 sm:h-4" />
+        </button>
 
-      {/* Code */}
-      <button
-        onClick={() => editor.chain().focus().toggleCode().run()}
-        disabled={!editor.can().chain().focus().toggleCode().run()}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive("code") ? "bg-blue-200" : ""
-        }`}
-        title="Inline Code"
-      >
-        <Code size={16} />
-      </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleCode().run()}
+          disabled={!editor.can().chain().focus().toggleCode().run()}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive("code") ? "bg-blue-200" : ""
+          }`}
+          title="Inline Code"
+        >
+          <Code size={16} className="sm:w-4 sm:h-4" />
+        </button>
 
-      {/* Blockquote */}
-      <button
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        className={`p-2 rounded hover:bg-gray-200 ${
-          editor.isActive("blockquote") ? "bg-blue-200" : ""
-        }`}
-        title="Quote"
-      >
-        <Quote size={16} />
-      </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          className={`p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation ${
+            editor.isActive("blockquote") ? "bg-blue-200" : ""
+          }`}
+          title="Quote"
+        >
+          <Quote size={16} className="sm:w-4 sm:h-4" />
+        </button>
 
-      {/* Table */}
-      <button
-        onClick={addTable}
-        className="p-2 rounded hover:bg-gray-200"
-        title="Insert Table"
-      >
-        <TableIcon size={16} />
-      </button>
+        <button
+          type="button"
+          onClick={addTable}
+          className="p-2 sm:p-2.5 rounded hover:bg-gray-200 touch-manipulation"
+          title="Insert Table"
+        >
+          <TableIcon size={16} className="sm:w-4 sm:h-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -546,12 +594,20 @@ export default function TiptapEditor({
           __html: `
           .tiptap-container .ProseMirror {
             outline: none;
-            padding: 16px;
-            min-height: 180px;
-            font-size: 16px;
+            padding: 12px;
+            min-height: 120px;
+            font-size: 14px;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
             line-height: 1.6;
             color: #1a202c;
+          }
+          
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror {
+              padding: 16px;
+              min-height: 180px;
+              font-size: 16px;
+            }
           }
           
           /* Paragraphs */
@@ -586,58 +642,112 @@ export default function TiptapEditor({
             text-decoration: underline;
           }
           
-          /* Headings */
+          /* Headings - Responsive sizing */
           .tiptap-container .ProseMirror h1 {
-            font-size: 2rem;
+            font-size: 1.5rem;
             font-weight: bold;
-            margin: 1rem 0 0.5rem 0;
+            margin: 0.75rem 0 0.5rem 0;
             line-height: 1.2;
           }
           
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror h1 {
+              font-size: 2rem;
+              margin: 1rem 0 0.5rem 0;
+            }
+          }
+          
           .tiptap-container .ProseMirror h2 {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: bold;
-            margin: 1rem 0 0.5rem 0;
+            margin: 0.75rem 0 0.5rem 0;
             line-height: 1.3;
           }
           
-          .tiptap-container .ProseMirror h3 {
-            font-size: 1.25rem;
-            font-weight: bold;
-            margin: 1rem 0 0.5rem 0;
-            line-height: 1.4;
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror h2 {
+              font-size: 1.5rem;
+              margin: 1rem 0 0.5rem 0;
+            }
           }
           
-          .tiptap-container .ProseMirror h4 {
+          .tiptap-container .ProseMirror h3 {
             font-size: 1.125rem;
             font-weight: bold;
             margin: 0.75rem 0 0.5rem 0;
             line-height: 1.4;
           }
           
-          .tiptap-container .ProseMirror h5 {
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror h3 {
+              font-size: 1.25rem;
+              margin: 1rem 0 0.5rem 0;
+            }
+          }
+          
+          .tiptap-container .ProseMirror h4 {
             font-size: 1rem;
             font-weight: bold;
-            margin: 0.75rem 0 0.5rem 0;
+            margin: 0.5rem 0 0.5rem 0;
+            line-height: 1.4;
+          }
+          
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror h4 {
+              font-size: 1.125rem;
+              margin: 0.75rem 0 0.5rem 0;
+            }
+          }
+          
+          .tiptap-container .ProseMirror h5 {
+            font-size: 0.875rem;
+            font-weight: bold;
+            margin: 0.5rem 0 0.5rem 0;
             line-height: 1.5;
           }
           
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror h5 {
+              font-size: 1rem;
+              margin: 0.75rem 0 0.5rem 0;
+            }
+          }
+          
           .tiptap-container .ProseMirror h6 {
-            font-size: 0.875rem;
+            font-size: 0.75rem;
             font-weight: bold;
-            margin: 0.75rem 0 0.5rem 0;
+            margin: 0.5rem 0 0.5rem 0;
             line-height: 1.5;
+          }
+          
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror h6 {
+              font-size: 0.875rem;
+              margin: 0.75rem 0 0.5rem 0;
+            }
           }
           
           /* Lists */
           .tiptap-container .ProseMirror ul {
             margin: 8px 0;
-            padding-left: 20px;
+            padding-left: 16px;
+          }
+          
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror ul {
+              padding-left: 20px;
+            }
           }
           
           .tiptap-container .ProseMirror ol {
             margin: 8px 0;
-            padding-left: 20px;
+            padding-left: 16px;
+          }
+          
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror ol {
+              padding-left: 20px;
+            }
           }
           
           .tiptap-container .ProseMirror li {
@@ -656,24 +766,44 @@ export default function TiptapEditor({
           .tiptap-container .ProseMirror a {
             color: #3b82f6;
             text-decoration: underline;
+            word-break: break-word;
           }
           
           .tiptap-container .ProseMirror a:hover {
             color: #1d4ed8;
           }
           
-          /* Tables */
+          /* Tables - Responsive */
           .tiptap-container .ProseMirror table {
             border-collapse: collapse;
             margin: 16px 0;
             width: 100%;
+            overflow-x: auto;
+            display: block;
+            white-space: nowrap;
+          }
+          
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror table {
+              display: table;
+              white-space: normal;
+            }
           }
           
           .tiptap-container .ProseMirror table td,
           .tiptap-container .ProseMirror table th {
             border: 1px solid #d1d5db;
-            padding: 8px 12px;
+            padding: 6px 8px;
             vertical-align: top;
+            min-width: 80px;
+          }
+          
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror table td,
+            .tiptap-container .ProseMirror table th {
+              padding: 8px 12px;
+              min-width: auto;
+            }
           }
           
           .tiptap-container .ProseMirror table th {
@@ -681,13 +811,14 @@ export default function TiptapEditor({
             font-weight: bold;
           }
           
-          /* Images */
+          /* Images - Responsive */
           .tiptap-container .ProseMirror img {
             max-width: 100%;
             height: auto;
             border-radius: 4px;
             margin: 8px 0;
             border: 1px solid #e5e7eb;
+            display: block;
           }
           
           .tiptap-container .ProseMirror img[src=""],
@@ -741,11 +872,19 @@ export default function TiptapEditor({
           /* Code blocks */
           .tiptap-container .ProseMirror pre {
             background-color: #f3f4f6;
-            padding: 12px;
+            padding: 8px;
             border-radius: 4px;
             font-family: 'Courier New', monospace;
             margin: 8px 0;
             overflow-x: auto;
+            font-size: 12px;
+          }
+          
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror pre {
+              padding: 12px;
+              font-size: 14px;
+            }
           }
           
           .tiptap-container .ProseMirror code {
@@ -753,16 +892,42 @@ export default function TiptapEditor({
             padding: 2px 4px;
             border-radius: 2px;
             font-family: 'Courier New', monospace;
-            font-size: 0.9em;
+            font-size: 0.85em;
           }
           
           /* Blockquotes */
           .tiptap-container .ProseMirror blockquote {
             border-left: 4px solid #d1d5db;
-            padding-left: 16px;
-            margin: 16px 0;
+            padding-left: 12px;
+            margin: 12px 0;
             font-style: italic;
             color: #6b7280;
+          }
+          
+          @media (min-width: 640px) {
+            .tiptap-container .ProseMirror blockquote {
+              padding-left: 16px;
+              margin: 16px 0;
+            }
+          }
+          
+          /* Touch improvements */
+          @media (max-width: 640px) {
+            .tiptap-container .ProseMirror {
+              -webkit-text-size-adjust: 100%;
+              -webkit-tap-highlight-color: transparent;
+            }
+          }
+          
+          /* Prevent horizontal scroll issues */
+          .tiptap-container {
+            overflow-x: hidden;
+          }
+          
+          /* Table wrapper for horizontal scroll on mobile */
+          .tiptap-container .ProseMirror table {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
           }
         `,
         }}

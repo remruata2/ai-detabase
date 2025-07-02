@@ -83,6 +83,24 @@ function htmlToPlainText(html) {
   return text || null;
 }
 
+// Create complete plain text with file information prepended
+function createCompletePlainText(fileNo, category, title, noteHtml) {
+  // Create the file information header
+  const fileInfo = `File No - ${fileNo}
+Category - ${category}
+Title - ${title}`;
+  
+  // Convert note HTML to plain text
+  const notePlainText = htmlToPlainText(noteHtml);
+  
+  // Combine file info with note content
+  if (notePlainText && notePlainText.trim()) {
+    return `${fileInfo}\n\n${notePlainText}`;
+  } else {
+    return fileInfo;
+  }
+}
+
 async function cleanPlainTextData() {
   try {
     console.log("🔄 Starting plain text cleanup...");
@@ -96,6 +114,9 @@ async function cleanPlainTextData() {
       },
       select: {
         id: true,
+        file_no: true,
+        category: true,
+        title: true,
         note: true,
         note_plain_text: true,
       },
@@ -107,7 +128,12 @@ async function cleanPlainTextData() {
     let skipped = 0;
 
     for (const record of records) {
-      const newPlainText = htmlToPlainText(record.note);
+      const newPlainText = createCompletePlainText(
+        record.file_no,
+        record.category,
+        record.title,
+        record.note
+      );
 
       // Only update if the plain text has changed
       if (newPlainText !== record.note_plain_text) {

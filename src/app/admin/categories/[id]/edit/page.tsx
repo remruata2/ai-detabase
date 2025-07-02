@@ -7,13 +7,7 @@ import { Metadata } from "next";
 import { pageContainer, pageTitle, cardContainer } from "@/styles/ui-classes";
 import BackButton from '@/components/ui/BackButton';
 
-interface EditCategoryPageProps {
-  params: {
-    id: string;
-  };
-}
-
-export async function generateMetadata({ params }: EditCategoryPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const id = parseInt(params.id, 10);
   if (isNaN(id)) {
     return { title: "Category Not Found" };
@@ -24,7 +18,7 @@ export async function generateMetadata({ params }: EditCategoryPageProps): Promi
   };
 }
 
-export default async function EditCategoryPage({ params }: EditCategoryPageProps) {
+export default async function EditCategoryPage({ params }: { params: { id: string } }) {
   const id = parseInt(params.id, 10);
 
   if (isNaN(id)) {
