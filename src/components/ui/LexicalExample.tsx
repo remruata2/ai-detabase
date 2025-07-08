@@ -25,10 +25,8 @@ import {
 	TextNode,
 } from "lexical";
 
-import ExampleTheme from "./ExampleTheme";
+import { ExampleTheme } from "./ExampleTheme";
 import ToolbarPlugin from "./plugins/ToolbarPlugin";
-import TreeViewPlugin from "./plugins/TreeViewPlugin";
-import { parseAllowedColor, parseAllowedFontSize } from "./styleConfig";
 
 const placeholder = "Enter some rich text...";
 
@@ -67,9 +65,10 @@ const getExtraStyles = (element: HTMLElement): string => {
 	// Parse styles from pasted input, but only if they match exactly the
 	// sort of styles that would be produced by exportDOM
 	let extraStyles = "";
-	const fontSize = parseAllowedFontSize(element.style.fontSize);
-	const backgroundColor = parseAllowedColor(element.style.backgroundColor);
-	const color = parseAllowedColor(element.style.color);
+	// Simplified approach without the missing parseAllowedFontSize/parseAllowedColor functions
+	const fontSize = element.style.fontSize || "";
+	const backgroundColor = element.style.backgroundColor || "";
+	const color = element.style.color || "";
 	if (fontSize !== "" && fontSize !== "15px") {
 		extraStyles += `font-size: ${fontSize};`;
 	}
@@ -161,7 +160,6 @@ export default function App() {
 					/>
 					<HistoryPlugin />
 					<AutoFocusPlugin />
-					<TreeViewPlugin />
 				</div>
 			</div>
 		</LexicalComposer>

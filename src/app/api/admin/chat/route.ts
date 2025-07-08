@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       content: result.response,
       timestamp: new Date(),
       sources: result.sources,
+      tokenCount: result.tokenCount, // Include token count information
     };
 
     // Log the interaction for audit purposes

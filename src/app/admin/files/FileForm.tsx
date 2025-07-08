@@ -77,7 +77,8 @@ export default function FileForm({
       title: initialData?.title || "",
       note: initialData?.note || "",
       doc1: initialData?.doc1 || "",
-      entry_date: initialData?.entry_date_real || "", // Use entry_date_real for <input type="date">
+      entry_date:
+        initialData?.entry_date_real || new Date().toISOString().split("T")[0], // Use entry_date_real or today's date
     },
   });
 

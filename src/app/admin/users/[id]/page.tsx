@@ -6,20 +6,16 @@ import { getUserById } from '@/services/user-service';
 import { UserRole } from '@/generated/prisma';
 import UserDetailClient, { UserDetailProps } from './UserDetailClient'; // Import the new client component
 
-interface UserDetailPageProps {
-  params: { id: string };
-}
-
-export default async function UserDetailPage(props: UserDetailPageProps) {
-  const { params } = props;
+export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   // Check if user is authenticated and is an admin
   if (!session || !session.user || session.user.role !== UserRole.admin) {
     redirect('/unauthorized'); // Or your preferred unauthorized/login page
   }
-
-  const userId = parseInt(params.id, 10);
+  
+  const { id: paramId } = await params;
+  const userId = parseInt(paramId, 10);
   let user: UserDetailProps | null = null;
   let error: string | null = null;
   let loading = true; // Start with loading true

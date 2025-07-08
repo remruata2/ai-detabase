@@ -10,12 +10,6 @@ import { Pencil } from "lucide-react";
 import { pageContainer, pageTitle, cardContainer } from "@/styles/ui-classes";
 import { format } from "date-fns";
 
-interface ViewFilePageProps {
-  params: {
-    id: string;
-  };
-}
-
 interface DetailItemProps {
   label: string;
   value?: string | null;
@@ -44,7 +38,7 @@ const DetailItem: React.FC<DetailItemProps> = ({
   );
 };
 
-export default async function ViewFilePage({ params }: ViewFilePageProps) {
+export default async function ViewFilePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user || session.user.role !== UserRole.admin) {

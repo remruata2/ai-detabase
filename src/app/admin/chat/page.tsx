@@ -1299,7 +1299,7 @@ export default function AdminChatPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-4 w-full">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">CID AI Assistant</h1>
         <p className="text-gray-600 mt-2">
@@ -1315,7 +1315,7 @@ export default function AdminChatPage() {
         </Alert>
       )}
 
-      <Card className="h-[600px] flex flex-col">
+      <Card className="h-[calc(100vh-160px)] flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 flex-shrink-0">
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
@@ -1520,13 +1520,20 @@ export default function AdminChatPage() {
                           )}
                         </div>
                         <div
-                          className={`text-xs mt-1 ${
+                          className={`text-xs mt-1 flex items-center gap-2 ${
                             message.role === "user"
                               ? "text-blue-100"
                               : "text-gray-500"
                           }`}
                         >
-                          {formatTimestamp(message.timestamp)}
+                          <span>{formatTimestamp(message.timestamp)}</span>
+                          {message.role === "assistant" && message.tokenCount && (
+                            <span className="border-l border-gray-300 dark:border-gray-700 pl-2 flex items-center">
+                              <span title="Input tokens">In: {message.tokenCount.input.toLocaleString()}</span>
+                              <span className="mx-1">|</span>
+                              <span title="Output tokens">Out: {message.tokenCount.output.toLocaleString()}</span>
+                            </span>
+                          )}
                         </div>
                         {message.sources && message.sources.length > 0 && (
                           <div className="mt-2 space-y-1">

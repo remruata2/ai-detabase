@@ -14,6 +14,10 @@ export interface ChatMessage {
     file_no: string;
     title: string;
   }>;
+  tokenCount?: {
+    input: number;
+    output: number;
+  };
 }
 
 export interface SearchResult {

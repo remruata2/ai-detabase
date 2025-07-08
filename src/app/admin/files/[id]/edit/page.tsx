@@ -7,20 +7,15 @@ import { getFileById, FileDetail, getCategoryListItems } from "../../actions"; /
 import BackButton from "@/components/ui/BackButton";
 import { pageContainer, pageTitle, cardContainer } from "@/styles/ui-classes";
 
-interface EditFilePageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default async function EditFilePage({ params }: EditFilePageProps) {
+export default async function EditFilePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user || session.user.role !== UserRole.admin) {
     redirect("/unauthorized");
   }
 
-  const id = parseInt(params.id, 10);
+  const { id: paramId } = await params;
+  const id = parseInt(paramId, 10);
   if (isNaN(id)) {
     return <p className={pageContainer}>Invalid file ID.</p>;
   }

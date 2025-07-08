@@ -8,19 +8,15 @@ import UserEditForm, { UserEditData } from './UserEditForm'; // Import the new c
 import { Loader2, ArrowLeft } from 'lucide-react'; // For loading/error states before client component renders
 import Link from 'next/link'; // For error state navigation
 
-interface UserEditPageProps {
-  params: { id: string };
-}
-
-export default async function UserEditPage(props: UserEditPageProps) {
-  const { params } = props;
+export default async function UserEditPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user || session.user.role !== UserRole.admin) {
     redirect('/unauthorized');
   }
-
-  const userId = parseInt(params.id, 10);
+  
+  const { id: paramId } = await params;
+  const userId = parseInt(paramId, 10);
   let initialUserData: UserEditData | null = null;
   let error: string | null = null;
 
