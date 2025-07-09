@@ -418,9 +418,9 @@ function prepareContextForAI(records: SearchResult[], query?: string): string {
 		let content = record.note_plain_text || "No content available";
 
 		// Avoid duplicating metadata if it's already in the note_plain_text
-		const fileNoPattern = new RegExp(`File No[^\n]*${record.file_no}`, "i");
-		const categoryPattern = new RegExp(`Category[^\n]*${record.category}`, "i");
-		const titlePattern = new RegExp(`Title[^\n]*${record.title}`, "i");
+		const fileNoPattern = new RegExp(`File No[^\\n]*${escapeRegExp(record.file_no)}`, "i");
+		const categoryPattern = new RegExp(`Category[^\\n]*${escapeRegExp(record.category)}`, "i");
+		const titlePattern = new RegExp(`Title[^\\n]*${escapeRegExp(record.title)}`, "i");
 
 		const hasMetadataPrefix =
 			fileNoPattern.test(content.substring(0, 200)) ||
@@ -478,6 +478,13 @@ ${Object.entries(recordsByCategory)
 
 END OF DATABASE CONTEXT
 `;
+}
+
+/**
+ * Escape special regex characters in a string
+ */
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
