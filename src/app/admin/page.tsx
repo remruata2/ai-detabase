@@ -1,10 +1,41 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import Link from 'next/link';
 
 export default function AdminPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirect to login if not authenticated
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
+  // Show loading state while checking session
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      </div>
+    );
+  }
+
+  // Show unauthorized if no session or not admin
+  if (!session || session.user?.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Unauthorized Access</h1>
+          <p className="text-gray-600">You don't have permission to view this page.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-6 sm:px-0">
@@ -24,7 +55,7 @@ export default function AdminPage() {
                 User
               </dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {session?.user?.name || session?.user?.username || session?.user?.email}
+                {session?.user?.name || session?.user?.username || session?.user?.email || 'N/A'}
               </dd>
             </div>
             <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
@@ -33,7 +64,7 @@ export default function AdminPage() {
               </dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                  {session?.user?.role}
+                  {session?.user?.role || 'N/A'}
                 </span>
               </dd>
             </div>
@@ -42,8 +73,7 @@ export default function AdminPage() {
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Documents card removed to make dashboard generic */}
-        {session?.user.role === 'admin' && (
+        {session?.user?.role === 'admin' && (
           <Link href="/admin/users" className="bg-white overflow-hidden shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <div className="flex items-center">

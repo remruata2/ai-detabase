@@ -8,40 +8,58 @@ import { Toaster } from "@/components/ui/sonner";
 import "../../styles/lexical-editor-styles.css";
 
 export default function AdminLayout({
-	children,
+  children,
 }: {
-	children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-	const { data: session, status } = useSession();
-	const router = useRouter();
-	const [sidebarOpen, setSidebarOpen] = useState(false); // For mobile off-canvas
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-	useEffect(() => {
-		if (status === "loading") return;
-		if (!session) {
-			router.push("/login");
-		}
-	}, [session, status, router]);
+  useEffect(() => {
+    if (status === "loading") return;
+    
+    if (!session) {
+      router.push("/login");
+      return;
+    }
 
-	if (status === "loading") {
-		return (
-			<div className="min-h-screen flex items-center justify-center">
-				<div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-			</div>
-		);
-	}
+    // Check if user has admin role
+    const userRole = (session as any)?.user?.role;
+    if (userRole !== 'admin') {
+      router.push("/unauthorized");
+      return;
+    }
 
-	if (!session) {
-		return null;
-	}
+    setIsAuthorized(true);
+  }, [session, status, router]);
 
-	return (
+  if (status === "loading" || isAuthorized === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Unauthorized Access</h1>
+          <p className="text-gray-600">You don't have permission to view this page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
     <div className="min-h-screen bg-gray-100 flex">
       <Toaster richColors position="top-right" />
       {/* Static sidebar for desktop */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-64">
-          {/* Sidebar component, swap this element with another sidebar if you like */}
           <div className="flex flex-col h-0 flex-1 border-r border-gray-200 bg-white">
             <AdminSidebar />
           </div>
