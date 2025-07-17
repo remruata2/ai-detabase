@@ -1,39 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DocumentParser } from "@/lib/document-parser";
+import { LlamaParseDocumentParser } from "@/lib/llamaparse-document-parser";
+import fs from "fs/promises";
+import path from "path";
+import os from "os";
 
-export const runtime = "nodejs"; // Ensure this runs on the Node.js runtime
-export const dynamic = "force-dynamic"; // Prevent static optimization
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   console.log("[PARSE-DOCUMENT] API called");
 
+  let tempFilePath: string | undefined;
+
   try {
     const formData = await req.formData();
-    console.log("[PARSE-DOCUMENT] FormData received");
-
     const file = formData.get("file");
-    console.log(
-      "[PARSE-DOCUMENT] File from formData:",
-      file ? "File object present" : "No file"
-    );
 
     if (!file || typeof file === "string") {
-      console.log("[PARSE-DOCUMENT] Error: No valid file uploaded");
       return NextResponse.json({ error: "No file uploaded." }, { status: 400 });
     }
 
-    // Type assertion for the file
-    const uploadedFile = file as File;
-    console.log("[PARSE-DOCUMENT] File details:", {
-      name: uploadedFile.name,
-      size: uploadedFile.size,
-      type: uploadedFile.type,
-    });
+    // Create a temporary file path
+    const tempDir = os.tmpdir();
+    tempFilePath = path.join(tempDir, `upload_${Date.now()}_${file.name}`);
 
-    const parsed = await DocumentParser.parseDocument(uploadedFile);
-    console.log("[PARSE-DOCUMENT] Document parsed successfully");
+    // Save the uploaded file to the temporary path
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    await fs.writeFile(tempFilePath, fileBuffer);
+    console.log(`[PARSE-DOCUMENT] File saved temporarily to ${tempFilePath}`);
 
-    return NextResponse.json({ success: true, ...parsed });
+    // Initialize and use the LlamaParse parser
+    const parser = new LlamaParseDocumentParser();
+    const content = await parser.parseFile(tempFilePath);
+
+    console.log("[PARSE-DOCUMENT] Document parsed successfully with LlamaParse");
+
+    return NextResponse.json({ success: true, content });
   } catch (error) {
     console.error("[PARSE-DOCUMENT] Error:", error);
     console.error(
@@ -48,5 +50,15 @@ export async function POST(req: NextRequest) {
       },
       { status: 500 }
     );
+  } finally {
+    // Clean up the temporary file
+    if (tempFilePath) {
+      try {
+        await fs.unlink(tempFilePath);
+        console.log(`[PARSE-DOCUMENT] Deleted temporary file: ${tempFilePath}`);
+      } catch (cleanupError) {
+        console.error(`[PARSE-DOCUMENT] Error deleting temporary file ${tempFilePath}:`, cleanupError);
+      }
+    }
   }
 }

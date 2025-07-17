@@ -81,6 +81,7 @@ export default function FileForm({
 }: FileFormProps) {
   const [fileNoPopoverOpen, setFileNoPopoverOpen] = useState(false);
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -346,14 +347,43 @@ export default function FileForm({
           name="doc1"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Document Upload (Word, Excel) *</FormLabel>
+              <FormLabel className="flex items-center">
+                Document Upload (Word, Excel, PDF) *
+                {isParsing && (
+                  <span className="ml-2 flex items-center text-sm text-gray-500">
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Parsing document...
+                  </span>
+                )}
+              </FormLabel>
               <FormControl>
                 <Input
                   type="file"
-                  accept=".docx,.xlsx,.xls"
+                  accept=".docx,.xlsx,.xls,.pdf"
+                  disabled={isParsing}
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (file) {
+                      setIsParsing(true);
                       const result = await parseDocumentViaApi(file);
                       if (result.error) {
                         toast.error(result.error);
@@ -365,6 +395,7 @@ export default function FileForm({
                       form.setValue("doc1", e.target.files, {
                         shouldValidate: true,
                       });
+                      setIsParsing(false);
                     }
                   }}
                 />

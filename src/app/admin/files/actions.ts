@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { LlamaParseDocumentParser } from "@/lib/llamaparse-document-parser";
 import { z } from "zod";
 import fs from "fs/promises";
 import path from "path";
@@ -317,9 +318,9 @@ export async function createFileAction(
     };
   }
 
-  const cleanedNote = removeImagePlaceholder(validatedFields.data.note);
-
   let doc1Path: string | null = null;
+  let finalNote = removeImagePlaceholder(validatedFields.data.note);
+
   if (file && file.size > 0) {
     try {
       const buffer = Buffer.from(await file.arrayBuffer());
@@ -346,37 +347,38 @@ export async function createFileAction(
   }
 
   try {
+    // Create the file record with the final note content
     const newFile = await prisma.fileList.create({
       data: {
         ...restOfData,
-        note: cleanedNote,
+        note: finalNote, // Use the potentially parsed content
         doc1: doc1Path,
         entry_date: entry_date,
         entry_date_real: entryDateReal,
       },
     });
 
+    // Manually update the search_vector using the correct note content
     await prisma.$executeRaw`
       UPDATE file_list 
       SET search_vector = to_tsvector('english', 
         COALESCE(file_no, '') || ' ' || 
         COALESCE(category, '') || ' ' || 
         COALESCE(title, '') || ' ' || 
-        COALESCE(note, '') || ' ' ||
+        ${finalNote} || ' ' ||
         COALESCE(entry_date, '') || ' ' ||
         COALESCE(EXTRACT(YEAR FROM entry_date_real)::text, '')
       )
       WHERE id = ${newFile.id}
     `;
 
-    if (cleanedNote && cleanedNote.trim().length > 0) {
+    // Generate and update semantic vector from the final note content
+    if (finalNote && finalNote.trim().length > 0) {
       try {
-        await SemanticVectorService.updateSemanticVector(
-          newFile.id,
-          cleanedNote
-        );
+        await SemanticVectorService.updateSemanticVector(newFile.id, finalNote);
       } catch (vectorError) {
         console.error("Semantic vector update failed:", vectorError);
+        // Don't fail the entire operation if this fails
       }
     }
 
@@ -414,11 +416,9 @@ export async function updateFileAction(
     };
   }
 
-  // 2. Clean the note content
-  const cleanedNote = removeImagePlaceholder(validatedFields.data.note);
-
-  // 3. Prepare data for database update
+  // 2. Prepare data for database update
   const { note, entry_date, ...restOfData } = validatedFields.data;
+  let finalNote = removeImagePlaceholder(note);
 
   let entryDateReal: Date | null = null;
   if (entry_date && entry_date.trim() !== "") {
@@ -432,7 +432,7 @@ export async function updateFileAction(
 
   const prismaDataForUpdate: any = {
     ...restOfData,
-    note: cleanedNote,
+    note: finalNote, // This will be overwritten by parsed content if a file is uploaded
     entry_date: entry_date,
     entry_date_real: entryDateReal,
   };
@@ -474,6 +474,11 @@ export async function updateFileAction(
       console.log(
         `New file uploaded successfully: ${prismaDataForUpdate.doc1}`
       );
+
+      // The note field is already populated with the parsed content from the frontend,
+      // so we just use that. The `finalNote` variable is updated from the form data
+      // at the beginning of this function.
+      prismaDataForUpdate.note = finalNote;
     } catch (error) {
       console.error("Error uploading file during update:", error);
       return {
@@ -490,24 +495,24 @@ export async function updateFileAction(
       data: prismaDataForUpdate,
     });
 
-    // 6. Update the search vector
+    // 6. Update the search vector with the final note content
     await prisma.$executeRaw`
       UPDATE file_list 
       SET search_vector = to_tsvector('english', 
         COALESCE(file_no, '') || ' ' || 
         COALESCE(category, '') || ' ' || 
         COALESCE(title, '') || ' ' || 
-        COALESCE(note, '') || ' ' ||
+        ${finalNote} || ' ' ||
         COALESCE(entry_date, '') || ' ' ||
         COALESCE(EXTRACT(YEAR FROM entry_date_real)::text, '')
       )
       WHERE id = ${id}
     `;
 
-    // 7. Generate and update semantic vector
-    if (cleanedNote && cleanedNote.trim().length > 0) {
+    // 7. Generate and update semantic vector from the final note content
+    if (finalNote && finalNote.trim().length > 0) {
       try {
-        await SemanticVectorService.updateSemanticVector(id, cleanedNote);
+        await SemanticVectorService.updateSemanticVector(id, finalNote);
         console.log(`✅ Semantic vector updated for file ${id}`);
       } catch (vectorError) {
         console.error("❌ Semantic vector update failed:", vectorError);
