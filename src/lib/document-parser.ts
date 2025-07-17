@@ -431,7 +431,7 @@ export class DocumentParser {
 
       // Extract rows
       const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-      const rows: string[] = [];
+      const tableRows: string[][] = [];
       let match;
 
       while ((match = rowRegex.exec(tableContent)) !== null) {
@@ -457,34 +457,220 @@ export class DocumentParser {
         }
 
         if (cells.length > 0) {
-          rows.push("| " + cells.join(" | ") + " |");
+          tableRows.push(cells);
         }
       }
 
-      if (rows.length === 0) {
+      if (tableRows.length === 0) {
         return "\n\n_Empty table_\n\n";
       }
 
-      // Create markdown table
-      let markdownTable = "\n\n";
+      // Check if this looks like a form data table (Particulars | Output structure)
+      const isFormTable = this.isFormDataTable(tableRows);
 
-      // Add first row (usually headers)
-      markdownTable += rows[0] + "\n";
+      if (isFormTable) {
+        return this.convertFormTableToMarkdown(tableRows);
+      } else {
+        return this.convertStandardTableToMarkdown(tableRows);
+      }
+    });
+  }
 
-      // Add separator row
-      const firstRowCells = rows[0].split("|").length - 2; // -2 for the empty start/end
-      const separator = "|" + " --- |".repeat(firstRowCells);
-      markdownTable += separator + "\n";
+  private static isFormDataTable(rows: string[][]): boolean {
+    if (rows.length < 2) return false;
 
-      // Add remaining rows
-      for (let i = 1; i < rows.length; i++) {
-        markdownTable += rows[i] + "\n";
+    // Check if first row contains typical form headers
+    const firstRow = rows[0].map((cell) => cell.toLowerCase().trim());
+    const hasFormHeaders = firstRow.some(
+      (header) =>
+        header.includes("particulars") ||
+        header.includes("output") ||
+        header.includes("field") ||
+        header.includes("value") ||
+        header.includes("sn") ||
+        header.includes("serial")
+    );
+
+    // Check if second row has field-like content (numbered items, field names)
+    if (rows.length > 1) {
+      const secondRow = rows[1].map((cell) => cell.toLowerCase().trim());
+      const hasFieldContent = secondRow.some(
+        (cell) =>
+          /^\d+\.?\s*/.test(cell) || // Numbered items like "1. Name of Child"
+          cell.includes("name") ||
+          cell.includes("date") ||
+          cell.includes("address") ||
+          cell.includes("age")
+      );
+
+      return hasFormHeaders || hasFieldContent;
+    }
+
+    return hasFormHeaders;
+  }
+
+  private static convertFormTableToMarkdown(rows: string[][]): string {
+    let markdown = "\n\n";
+
+    // Process each row intelligently
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+
+      if (row.length === 0) continue;
+
+      // Skip header rows that are just navigation or table structure
+      if (i === 0 && row.length >= 2) {
+        const firstCell = row[0].toLowerCase().trim();
+        const secondCell = row[1].toLowerCase().trim();
+
+        if (
+          firstCell.includes("update") ||
+          firstCell.includes("back") ||
+          (firstCell.includes("sn") && secondCell.includes("particulars"))
+        ) {
+          continue;
+        }
       }
 
-      markdownTable += "\n";
+      // Skip separator rows (rows with just dashes)
+      if (row.length === 1 && row[0].trim() === "---") continue;
+      if (row.every((cell) => cell.trim() === "---")) continue;
 
-      return markdownTable;
+      // Handle section headers (all caps or specific patterns)
+      if (row.length === 1) {
+        const content = row[0].trim();
+        if (content && content !== " ") {
+          if (
+            content.toUpperCase() === content ||
+            content.includes("Related Info") ||
+            content.includes("Details") ||
+            content.includes("Proceeding")
+          ) {
+            markdown += `## ${content}\n\n`;
+            continue;
+          }
+        }
+      }
+
+      // Handle numbered field rows (like "1 | Name of Child | Janet Lalhruaiawmi")
+      if (row.length >= 3) {
+        const firstCell = row[0].trim();
+        const secondCell = row[1].trim();
+        const thirdCell = row[2].trim();
+
+        // Check if this is a numbered field (e.g., "1", "2", "3")
+        if (/^\d+$/.test(firstCell) && secondCell && thirdCell) {
+          // This is a numbered field with value
+          markdown += `**${secondCell}:** ${thirdCell}\n\n`;
+          continue;
+        }
+
+        // Handle multi-part fields (like "Age with date of birth | Date of Birth | 28.08.2010")
+        if (secondCell && thirdCell && !/^\d+$/.test(firstCell)) {
+          // This might be a field with sub-fields
+          if (
+            firstCell.includes("Age") ||
+            firstCell.includes("address") ||
+            firstCell.includes("Family")
+          ) {
+            markdown += `**${firstCell}:**\n`;
+            markdown += `  - **${secondCell}:** ${thirdCell}\n\n`;
+            continue;
+          }
+        }
+      }
+
+      // Handle simple field-value pairs
+      if (row.length === 2) {
+        const field = row[0].trim();
+        const value = row[1].trim();
+
+        if (field && value && value !== " " && value !== "---") {
+          markdown += `**${field}:** ${value}\n\n`;
+        } else if (field && field !== "---") {
+          markdown += `**${field}:**\n\n`;
+        }
+      }
+
+      // Handle complex multi-column rows by extracting meaningful pairs
+      if (row.length > 3) {
+        let currentField = "";
+        let currentValue = "";
+
+        for (let j = 0; j < row.length; j++) {
+          const cell = row[j].trim();
+
+          if (!cell || cell === "---") continue;
+
+          // If this looks like a field name (contains keywords)
+          if (
+            cell.includes("Name") ||
+            cell.includes("Date") ||
+            cell.includes("Age") ||
+            cell.includes("Sex") ||
+            cell.includes("Address") ||
+            cell.includes("Status") ||
+            cell.includes("Level") ||
+            cell.includes("Type") ||
+            cell.includes("No")
+          ) {
+            // If we have a previous field-value pair, output it
+            if (currentField && currentValue) {
+              markdown += `**${currentField}:** ${currentValue}\n\n`;
+            }
+
+            currentField = cell;
+            currentValue = "";
+          } else {
+            // This looks like a value
+            if (currentValue) {
+              currentValue += ", " + cell;
+            } else {
+              currentValue = cell;
+            }
+          }
+        }
+
+        // Output the last field-value pair
+        if (currentField && currentValue) {
+          markdown += `**${currentField}:** ${currentValue}\n\n`;
+        }
+      }
+    }
+
+    return markdown;
+  }
+
+  private static convertStandardTableToMarkdown(rows: string[][]): string {
+    let markdown = "\n\n";
+
+    // Find the maximum number of columns
+    const maxCols = Math.max(...rows.map((row) => row.length));
+
+    // Pad rows to have the same number of columns
+    const paddedRows = rows.map((row) => {
+      const padded = [...row];
+      while (padded.length < maxCols) {
+        padded.push(" ");
+      }
+      return padded;
     });
+
+    // Create markdown table
+    for (let i = 0; i < paddedRows.length; i++) {
+      const row = paddedRows[i];
+      markdown +=
+        "| " + row.map((cell) => (cell || "").toString()).join(" | ") + " |\n";
+
+      // Add separator after first row
+      if (i === 0) {
+        const separator = "|" + " --- |".repeat(maxCols);
+        markdown += separator + "\n";
+      }
+    }
+
+    markdown += "\n";
+    return markdown;
   }
 
   private static countWords(text: string): number {

@@ -24,6 +24,16 @@ const DetailItem: React.FC<DetailItemProps> = ({
   isMarkdown = false,
 }) => {
   if (value === null || value === undefined || value.trim() === "") return null;
+
+  // Debug logging for markdown content
+  if (isMarkdown && value) {
+    console.log(`[DEBUG] Markdown content for ${label}:`, {
+      length: value.length,
+      preview: value.substring(0, 200) + (value.length > 200 ? "..." : ""),
+      containsMarkdown: /[*#`|]/.test(value),
+    });
+  }
+
   return (
     <div className="mb-4 pt-4 first:pt-0">
       <h3 className="text-sm font-medium text-gray-500">{label}</h3>
@@ -122,6 +132,20 @@ const DetailItem: React.FC<DetailItemProps> = ({
           >
             {value}
           </ReactMarkdown>
+
+          {/* Debug section - show raw content if it doesn't look like markdown */}
+          {!value.includes("**") &&
+            !value.includes("#") &&
+            !value.includes("|") && (
+              <details className="mt-4 p-2 bg-gray-50 rounded text-xs">
+                <summary className="cursor-pointer font-medium text-gray-600">
+                  Raw Content (Debug)
+                </summary>
+                <pre className="mt-2 whitespace-pre-wrap text-gray-700">
+                  {value}
+                </pre>
+              </details>
+            )}
         </div>
       ) : (
         <p className="mt-1 text-md text-gray-900 whitespace-pre-wrap">
