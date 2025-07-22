@@ -817,14 +817,7 @@ export default function AdminChatPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 w-full">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">CID AI Assistant</h1>
-        <p className="text-gray-600 mt-2">
-          Ask questions about the CID database records and get intelligent
-          responses.
-        </p>
-      </div>
+    <div className="w-full h-full p-2">
 
       {error && (
         <Alert className="mb-4" variant="destructive">
@@ -833,7 +826,7 @@ export default function AdminChatPage() {
         </Alert>
       )}
 
-      <Card className="h-[calc(100vh-160px)] flex flex-col">
+      <Card className="h-[calc(100vh-24px)] flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 flex-shrink-0">
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
