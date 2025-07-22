@@ -6,29 +6,17 @@ const nextConfig: NextConfig = {
     // Enable styled-components support
     styledComponents: true,
   },
-  // Configure webpack to handle Node.js modules in browser
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      // Handle Node.js modules that are not available in the browser
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        path: false,
-        os: false,
-        crypto: false,
-      };
-    }
-
-    return config;
-  },
-  // Server components external packages
+  // Server external packages (moved from experimental)
+  serverExternalPackages: ["mammoth", "xlsx"],
+  // Experimental features
   experimental: {
-    serverComponentsExternalPackages: ["mammoth", "xlsx"],
     serverActions: {
-      // Increase body size limit to 10MB for file uploads
-      bodySizeLimit: "10mb",
+      // Increase body size limit to 50MB for file uploads
+      bodySizeLimit: "50mb",
     },
   },
+  // Allow cross-origin requests from demo.lushaimedia.in
+  allowedDevOrigins: ["demo.lushaimedia.in"],
 };
 
 export default nextConfig;

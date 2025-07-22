@@ -30,7 +30,11 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TiptapEditor from "@/components/ui/TiptapEditor";
 // marked import removed - not used in this component
@@ -53,7 +57,7 @@ const fileFormSchema = z
       if (data.content_source === "editor") {
         return true;
       }
-      
+
       // If doc1 is a string, it's an existing file path, so it's valid.
       if (typeof data.doc1 === "string" && data.doc1) {
         return true;
@@ -95,7 +99,7 @@ export default function FileForm({
   useEffect(() => {
     setIsClient(true);
   }, []);
-  
+
   const router = useRouter();
   const form = useForm<FileFormValues>({
     resolver: zodResolver(fileFormSchema),
@@ -110,7 +114,7 @@ export default function FileForm({
       content_source: "file" as const,
     },
   });
-  
+
   // Update form note field when editor content changes
   useEffect(() => {
     if (form.getValues("content_source") === "editor" && editorContent) {
@@ -131,7 +135,11 @@ export default function FileForm({
     Object.entries(values).forEach(([key, value]) => {
       if (key === "doc1") {
         // Only append file if using file upload
-        if (values.content_source === "file" && value instanceof FileList && value.length > 0) {
+        if (
+          values.content_source === "file" &&
+          value instanceof FileList &&
+          value.length > 0
+        ) {
           formData.append(key, value[0]);
         }
         // If value is a string (existing file), we don't append it,
@@ -140,7 +148,7 @@ export default function FileForm({
         formData.append(key, String(value));
       }
     });
-    
+
     // If using editor, store HTML directly without conversion
     if (values.content_source === "editor" && values.note) {
       // Store HTML content directly
@@ -210,17 +218,24 @@ export default function FileForm({
                   }}
                 >
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="file" className="flex items-center gap-2">
+                    <TabsTrigger
+                      value="file"
+                      className="flex items-center gap-2"
+                    >
                       <FileText className="h-4 w-4" /> File Upload
                     </TabsTrigger>
-                    <TabsTrigger value="editor" className="flex items-center gap-2">
+                    <TabsTrigger
+                      value="editor"
+                      className="flex items-center gap-2"
+                    >
                       <Edit className="h-4 w-4" /> Manual Entry
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
               </FormControl>
               <FormDescription>
-                Choose whether to upload a document file or manually create content using the editor.
+                Choose whether to upload a document file or manually create
+                content using the editor.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -451,6 +466,19 @@ export default function FileForm({
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
+                          // Check file size (50MB limit)
+                          const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+                          if (file.size > maxSize) {
+                            toast.error(
+                              `File too large. Maximum size is 50MB. Your file is ${(
+                                file.size /
+                                (1024 * 1024)
+                              ).toFixed(2)}MB.`
+                            );
+                            e.target.value = ""; // Clear the input
+                            return;
+                          }
+
                           setIsParsing(true);
                           const result = await parseDocumentViaApi(file);
                           if (result.error) {
@@ -502,8 +530,8 @@ export default function FileForm({
                     />
                   </FormControl>
                   <FormDescription>
-                    This content is automatically generated from the uploaded file.
-                    You can edit it if needed.
+                    This content is automatically generated from the uploaded
+                    file. You can edit it if needed.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -557,7 +585,9 @@ export default function FileForm({
                     />
                   </FormControl>
                   <FormDescription>
-                    This shows the content that will be saved as markdown. It updates automatically as you edit in the rich text editor above.
+                    This shows the content that will be saved as markdown. It
+                    updates automatically as you edit in the rich text editor
+                    above.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -565,7 +595,7 @@ export default function FileForm({
             />
           </>
         )}
-        
+
         <FormField
           control={form.control}
           name="entry_date"

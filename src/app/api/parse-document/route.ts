@@ -5,7 +5,6 @@ import path from "path";
 import os from "os";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   console.log("[PARSE-DOCUMENT] API called");
@@ -18,6 +17,20 @@ export async function POST(req: NextRequest) {
 
     if (!file || typeof file === "string") {
       return NextResponse.json({ error: "No file uploaded." }, { status: 400 });
+    }
+
+    // Check file size (50MB limit)
+    const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        {
+          error: `File too large. Maximum size is 50MB. Your file is ${(
+            file.size /
+            (1024 * 1024)
+          ).toFixed(2)}MB.`,
+        },
+        { status: 413 }
+      );
     }
 
     // Create a temporary file path
@@ -33,7 +46,9 @@ export async function POST(req: NextRequest) {
     const parser = new LlamaParseDocumentParser();
     const content = await parser.parseFile(tempFilePath);
 
-    console.log("[PARSE-DOCUMENT] Document parsed successfully with LlamaParse");
+    console.log(
+      "[PARSE-DOCUMENT] Document parsed successfully with LlamaParse"
+    );
 
     return NextResponse.json({ success: true, content });
   } catch (error) {
@@ -57,7 +72,10 @@ export async function POST(req: NextRequest) {
         await fs.unlink(tempFilePath);
         console.log(`[PARSE-DOCUMENT] Deleted temporary file: ${tempFilePath}`);
       } catch (cleanupError) {
-        console.error(`[PARSE-DOCUMENT] Error deleting temporary file ${tempFilePath}:`, cleanupError);
+        console.error(
+          `[PARSE-DOCUMENT] Error deleting temporary file ${tempFilePath}:`,
+          cleanupError
+        );
       }
     }
   }
