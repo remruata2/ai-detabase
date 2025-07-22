@@ -6,8 +6,10 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   // Increase body size limit for Server Actions to handle larger file uploads
-  serverActions: {
-    bodySizeLimit: '4mb', // Increased from default 1mb to 4mb
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '4mb', // Increased from default 1mb to 4mb
+    },
   },
 };
 
