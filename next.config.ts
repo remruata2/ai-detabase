@@ -6,8 +6,13 @@ const nextConfig: NextConfig = {
     // Enable styled-components support
     styledComponents: true,
   },
-  // Server external packages (moved from experimental)
-  serverExternalPackages: ["mammoth", "xlsx"],
+  // Server external packages
+  serverExternalPackages: [
+    "mammoth",
+    "xlsx",
+    "@xenova/transformers",
+    "llamaindex",
+  ],
   // Experimental features
   experimental: {
     serverActions: {
@@ -15,7 +20,6 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "50mb",
     },
     // Increase timeout for server components
-    serverComponentsExternalPackages: ["@xenova/transformers"],
   },
   // Allow cross-origin requests from demo.lushaimedia.in
   allowedDevOrigins: ["demo.lushaimedia.in"],
@@ -44,6 +48,18 @@ const nextConfig: NextConfig = {
   // Increase memory limit for large queries
   webpack: (config, { isServer }) => {
     if (isServer) {
+      // Server-side specific configuration
+      // No browser-specific plugins
+
+      // Handle server-side rendering issues with browser globals
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        child_process: false,
+      };
+
       config.optimization.splitChunks = {
         chunks: "all",
         cacheGroups: {
