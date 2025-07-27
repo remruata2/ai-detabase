@@ -14,9 +14,53 @@ const nextConfig: NextConfig = {
       // Increase body size limit to 50MB for file uploads
       bodySizeLimit: "50mb",
     },
+    // Increase timeout for server components
+    serverComponentsExternalPackages: ["@xenova/transformers"],
   },
   // Allow cross-origin requests from demo.lushaimedia.in
   allowedDevOrigins: ["demo.lushaimedia.in"],
+  // Add timeout configurations
+  async headers() {
+    return [
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "X-Response-Time",
+            value: "300000", // 5 minutes
+          },
+        ],
+      },
+    ];
+  },
+  // Increase server timeout
+  serverRuntimeConfig: {
+    // Increase timeout for API routes
+    maxDuration: 300, // 5 minutes
+  },
+  // Performance optimizations
+  poweredByHeader: false,
+  compress: true,
+  // Increase memory limit for large queries
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.optimization.splitChunks = {
+        chunks: "all",
+        cacheGroups: {
+          default: false,
+          vendors: false,
+          // Increase chunk size for AI processing
+          vendor: {
+            name: "vendor",
+            chunks: "all",
+            test: /node_modules/,
+            priority: 20,
+          },
+        },
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
