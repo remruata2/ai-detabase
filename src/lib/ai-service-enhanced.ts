@@ -10,11 +10,33 @@ import {
 const DEV_LOGGING = true;
 
 // Configuration for relevance extraction
+// This feature extracts only relevant information from records to reduce token usage
+// while maintaining answer quality. It's particularly useful for large datasets.
 const RELEVANCE_EXTRACTION_CONFIG = {
   enabled: true, // Set to false to disable relevance extraction completely
   threshold: 50, // Enable for queries with more than this many records
   debug: true, // Set to true to see detailed extraction logs
 };
+
+/**
+ * RELEVANCE EXTRACTION FEATURE
+ *
+ * This feature intelligently extracts only relevant information from database records
+ * to reduce token usage while maintaining answer quality. It works by:
+ *
+ * 1. Analyzing the user's query for keywords
+ * 2. Scoring each record's relevance based on query matches
+ * 3. For highly relevant records: keeping full content
+ * 4. For less relevant records: extracting only key sentences
+ *
+ * Configuration:
+ * - enabled: Set to false to disable completely
+ * - threshold: Number of records above which extraction is enabled
+ * - debug: Set to true for detailed logging
+ *
+ * To disable: Set RELEVANCE_EXTRACTION_CONFIG.enabled = false
+ * To adjust threshold: Change RELEVANCE_EXTRACTION_CONFIG.threshold
+ */
 
 // Performance timing helper function
 function timeStart(label: string) {
