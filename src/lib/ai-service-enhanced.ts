@@ -9,6 +9,13 @@ import {
 // Developer logging toggle - set to true to see query logs in console
 const DEV_LOGGING = true;
 
+// Configuration for relevance extraction
+const RELEVANCE_EXTRACTION_CONFIG = {
+  enabled: true, // Set to false to disable relevance extraction completely
+  threshold: 50, // Enable for queries with more than this many records
+  debug: true, // Set to true to see detailed extraction logs
+};
+
 // Performance timing helper function
 function timeStart(label: string) {
   const uniqueLabel = `${label}_${Date.now()}_${Math.random()
@@ -260,6 +267,10 @@ export function extractRelevantInformation(
   records: SearchResult[],
   query: string
 ): SearchResult[] {
+  if (!RELEVANCE_EXTRACTION_CONFIG.enabled) {
+    return records; // Return original records if feature is disabled
+  }
+
   console.log(
     `[RELEVANCE-EXTRACTION] Extracting relevant information from ${records.length} records`
   );
@@ -755,7 +766,9 @@ export async function processChatMessageEnhanced(
   const contextTiming = timeStart("Context Preparation");
 
   // Enable relevance extraction for large datasets to reduce token usage
-  const useRelevanceExtraction = records.length > 50; // Enable for queries with more than 50 records
+  const useRelevanceExtraction =
+    RELEVANCE_EXTRACTION_CONFIG.enabled &&
+    records.length > RELEVANCE_EXTRACTION_CONFIG.threshold;
   context = prepareContextForAI(
     records,
     queryForSearch,
