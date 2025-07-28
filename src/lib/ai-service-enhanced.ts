@@ -301,85 +301,358 @@ export function extractRelevantInformation(
   const queryLower = query.toLowerCase();
   const queryWords = queryLower.split(/\s+/).filter((word) => word.length > 2);
 
-  // Keywords that indicate relevance
-  const relevanceKeywords = [
-    "victim",
-    "suspect",
-    "witness",
-    "location",
-    "place",
-    "date",
-    "time",
-    "age",
-    "name",
-    "address",
-    "phone",
-    "incident",
-    "crime",
-    "case",
-    "file",
-    "number",
-    "category",
-    "description",
-    "details",
-  ];
-
+  // Use semantic search scores to determine relevance
   return records.map((record) => {
     const originalNote = record.note || "";
     const title = record.title || "";
     const category = record.category || "";
 
-    // Check if record contains query words
-    const containsQueryWords = queryWords.some(
-      (word) =>
-        title.toLowerCase().includes(word) ||
-        originalNote.toLowerCase().includes(word) ||
-        category.toLowerCase().includes(word)
-    );
+    // Calculate relevance score based on semantic search results
+    const relevanceScore = calculateRelevanceScore(record, queryWords, query);
 
-    // Check if record contains relevance keywords
-    const containsRelevanceKeywords = relevanceKeywords.some(
-      (keyword) =>
-        title.toLowerCase().includes(keyword) ||
-        originalNote.toLowerCase().includes(keyword) ||
-        category.toLowerCase().includes(keyword)
-    );
+    // Determine relevance level based on score
+    const relevanceLevel = determineRelevanceLevel(relevanceScore, record);
 
-    // If record is relevant, keep full content
-    if (containsQueryWords || containsRelevanceKeywords) {
-      return record;
+    // Apply appropriate extraction based on relevance level
+    switch (relevanceLevel) {
+      case "high":
+        // Keep full content for highly relevant records
+        return record;
+      case "medium":
+        // Extract key information for medium relevance
+        const extractedNote = extractKeyInformation(
+          originalNote,
+          queryWords,
+          query
+        );
+        return {
+          ...record,
+          note: extractedNote,
+          _processed: true,
+        };
+      case "low":
+      default:
+        // Extract minimal information for low relevance
+        const minimalNote = extractMinimalInformation(
+          originalNote,
+          queryWords,
+          query
+        );
+        return {
+          ...record,
+          note: minimalNote,
+          _processed: true,
+        };
     }
-
-    // For less relevant records, extract only key information
-    const extractedNote = extractKeyInformation(originalNote, queryWords);
-
-    return {
-      ...record,
-      note: extractedNote,
-      // Add a flag to indicate this was processed
-      _processed: true,
-    };
   });
+}
+
+/**
+ * Calculate relevance score based on semantic search results and query analysis
+ */
+function calculateRelevanceScore(
+  record: SearchResult,
+  queryWords: string[],
+  query: string
+): number {
+  let score = 0;
+
+  // Use semantic similarity score if available
+  if (record.semantic_similarity !== undefined) {
+    score += record.semantic_similarity * 10; // Scale semantic similarity
+  }
+
+  // Use combined score if available
+  if (record.combined_score !== undefined) {
+    score += record.combined_score * 5; // Scale combined score
+  }
+
+  // Use rank if available (lower rank = higher relevance)
+  if (record.rank !== undefined) {
+    score += (100 - record.rank) / 10; // Convert rank to score
+  }
+
+  // Query word matches in title and content
+  const titleLower = record.title.toLowerCase();
+  const noteLower = (record.note || "").toLowerCase();
+  const categoryLower = (record.category || "").toLowerCase();
+
+  queryWords.forEach((word) => {
+    // Title matches get higher weight
+    if (titleLower.includes(word)) {
+      score += 5;
+    }
+    // Content matches
+    if (noteLower.includes(word)) {
+      score += 3;
+    }
+    // Category matches
+    if (categoryLower.includes(word)) {
+      score += 2;
+    }
+  });
+
+  // Analyze query type and adjust scoring
+  const queryType = analyzeQueryType(query);
+  score = adjustScoreForQueryType(score, queryType, record);
+
+  return score;
+}
+
+/**
+ * Analyze the type of query to determine what information is most relevant
+ */
+function analyzeQueryType(query: string): string {
+  const queryLower = query.toLowerCase();
+
+  // Check for specific query patterns
+  if (queryLower.includes("victim") && queryLower.includes("suspect")) {
+    return "victim_suspect";
+  }
+  if (
+    queryLower.includes("location") ||
+    queryLower.includes("place") ||
+    queryLower.includes("where")
+  ) {
+    return "location";
+  }
+  if (
+    queryLower.includes("date") ||
+    queryLower.includes("when") ||
+    queryLower.includes("time")
+  ) {
+    return "temporal";
+  }
+  if (queryLower.includes("age") || queryLower.includes("old")) {
+    return "demographic";
+  }
+  if (
+    queryLower.includes("list") ||
+    queryLower.includes("all") ||
+    queryLower.includes("every")
+  ) {
+    return "comprehensive";
+  }
+  if (
+    queryLower.includes("count") ||
+    queryLower.includes("number") ||
+    queryLower.includes("total")
+  ) {
+    return "statistical";
+  }
+
+  return "general";
+}
+
+/**
+ * Adjust relevance score based on query type
+ */
+function adjustScoreForQueryType(
+  score: number,
+  queryType: string,
+  record: SearchResult
+): number {
+  const noteLower = (record.note || "").toLowerCase();
+
+  switch (queryType) {
+    case "victim_suspect":
+      // Boost score for records containing victim/suspect information
+      if (
+        noteLower.includes("victim") ||
+        noteLower.includes("suspect") ||
+        noteLower.includes("accused") ||
+        noteLower.includes("complainant")
+      ) {
+        score += 10;
+      }
+      break;
+    case "location":
+      // Boost score for records containing location information
+      if (
+        noteLower.includes("location") ||
+        noteLower.includes("place") ||
+        noteLower.includes("address") ||
+        noteLower.includes("where")
+      ) {
+        score += 8;
+      }
+      break;
+    case "temporal":
+      // Boost score for records containing date/time information
+      if (
+        noteLower.includes("date") ||
+        noteLower.includes("time") ||
+        /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(noteLower)
+      ) {
+        score += 6;
+      }
+      break;
+    case "demographic":
+      // Boost score for records containing age information
+      if (noteLower.includes("age") || /\d+\s*years?\s*old/.test(noteLower)) {
+        score += 7;
+      }
+      break;
+    case "comprehensive":
+      // For comprehensive queries, keep more records relevant
+      score += 3;
+      break;
+    case "statistical":
+      // For statistical queries, focus on records with numbers
+      if (/\d+/.test(noteLower)) {
+        score += 4;
+      }
+      break;
+  }
+
+  return score;
+}
+
+/**
+ * Determine relevance level based on calculated score
+ */
+function determineRelevanceLevel(
+  score: number,
+  record: SearchResult
+): "high" | "medium" | "low" {
+  // Use semantic similarity as primary indicator if available
+  if (record.semantic_similarity !== undefined) {
+    if (record.semantic_similarity > 0.7) return "high";
+    if (record.semantic_similarity > 0.4) return "medium";
+    return "low";
+  }
+
+  // Use combined score if available
+  if (record.combined_score !== undefined) {
+    if (record.combined_score > 0.6) return "high";
+    if (record.combined_score > 0.3) return "medium";
+    return "low";
+  }
+
+  // Use calculated score
+  if (score > 15) return "high";
+  if (score > 8) return "medium";
+  return "low";
+}
+
+/**
+ * Get patterns based on query type for more targeted extraction
+ */
+function getPatternsForQueryType(
+  queryType: string
+): Array<{ pattern: RegExp; weight: number; label: string }> {
+  const basePatterns = [
+    // Name patterns (always relevant)
+    { pattern: /([A-Z][a-z]+\s+[A-Z][a-z]+)/g, weight: 2, label: "Name" },
+    // File number patterns (always relevant)
+    { pattern: /file\s*no[:\s]*([^.!?]+)/gi, weight: 2, label: "File" },
+    { pattern: /fir\s*no[:\s]*([^.!?]+)/gi, weight: 2, label: "FIR" },
+  ];
+
+  switch (queryType) {
+    case "victim_suspect":
+      return [
+        ...basePatterns,
+        { pattern: /victim[:\s]+([^.!?]+)/gi, weight: 5, label: "Victim" },
+        {
+          pattern: /complainant[:\s]+([^.!?]+)/gi,
+          weight: 5,
+          label: "Complainant",
+        },
+        { pattern: /injured[:\s]+([^.!?]+)/gi, weight: 4, label: "Injured" },
+        { pattern: /suspect[:\s]+([^.!?]+)/gi, weight: 5, label: "Suspect" },
+        { pattern: /accused[:\s]+([^.!?]+)/gi, weight: 5, label: "Accused" },
+        {
+          pattern: /defendant[:\s]+([^.!?]+)/gi,
+          weight: 4,
+          label: "Defendant",
+        },
+      ];
+    case "location":
+      return [
+        ...basePatterns,
+        { pattern: /location[:\s]+([^.!?]+)/gi, weight: 5, label: "Location" },
+        { pattern: /place[:\s]+([^.!?]+)/gi, weight: 4, label: "Place" },
+        { pattern: /address[:\s]+([^.!?]+)/gi, weight: 4, label: "Address" },
+        { pattern: /where[:\s]+([^.!?]+)/gi, weight: 4, label: "Location" },
+      ];
+    case "temporal":
+      return [
+        ...basePatterns,
+        { pattern: /date[:\s]+([^.!?]+)/gi, weight: 5, label: "Date" },
+        { pattern: /time[:\s]+([^.!?]+)/gi, weight: 4, label: "Time" },
+        {
+          pattern: /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/g,
+          weight: 4,
+          label: "Date",
+        },
+        { pattern: /when[:\s]+([^.!?]+)/gi, weight: 4, label: "Time" },
+      ];
+    case "demographic":
+      return [
+        ...basePatterns,
+        { pattern: /age[:\s]+(\d+)/gi, weight: 5, label: "Age" },
+        { pattern: /(\d+)\s*years?\s*old/gi, weight: 5, label: "Age" },
+        { pattern: /(\d+)\s*years?/gi, weight: 3, label: "Age" },
+      ];
+    case "statistical":
+      return [
+        ...basePatterns,
+        { pattern: /(\d+)/g, weight: 3, label: "Number" },
+        { pattern: /count[:\s]+([^.!?]+)/gi, weight: 4, label: "Count" },
+        { pattern: /total[:\s]+([^.!?]+)/gi, weight: 4, label: "Total" },
+      ];
+    default:
+      return [
+        ...basePatterns,
+        // General patterns for unknown query types
+        { pattern: /victim[:\s]+([^.!?]+)/gi, weight: 4, label: "Victim" },
+        { pattern: /suspect[:\s]+([^.!?]+)/gi, weight: 4, label: "Suspect" },
+        { pattern: /location[:\s]+([^.!?]+)/gi, weight: 3, label: "Location" },
+        { pattern: /date[:\s]+([^.!?]+)/gi, weight: 3, label: "Date" },
+        { pattern: /age[:\s]+(\d+)/gi, weight: 3, label: "Age" },
+      ];
+  }
 }
 
 /**
  * Extract key information from a note based on query relevance
  */
-function extractKeyInformation(note: string, queryWords: string[]): string {
+function extractKeyInformation(
+  note: string,
+  queryWords: string[],
+  query: string
+): string {
   if (!note) return "";
 
   // Split note into sentences
   const sentences = note.split(/[.!?]+/).filter((s) => s.trim().length > 0);
 
+  // Define patterns based on query type
+  const queryType = analyzeQueryType(query);
+  const patterns = getPatternsForQueryType(queryType);
+
   // Score sentences based on relevance
   const scoredSentences = sentences.map((sentence) => {
     const sentenceLower = sentence.toLowerCase();
     let score = 0;
+    let extractedInfo: string[] = [];
 
     // Score based on query word matches
     queryWords.forEach((word) => {
       if (sentenceLower.includes(word)) {
-        score += 2; // Higher weight for query matches
+        score += 3; // Higher weight for query matches
+      }
+    });
+
+    // Score based on specific patterns
+    patterns.forEach(({ pattern, weight, label }) => {
+      const matches = sentence.match(pattern);
+      if (matches) {
+        score += weight;
+        matches.forEach((match) => {
+          extractedInfo.push(`${label}: ${match.trim()}`);
+        });
       }
     });
 
@@ -407,24 +680,89 @@ function extractKeyInformation(note: string, queryWords: string[]): string {
       }
     });
 
-    return { sentence: sentence.trim(), score };
+    return {
+      sentence: sentence.trim(),
+      score,
+      extractedInfo,
+      hasRelevantInfo: extractedInfo.length > 0,
+    };
   });
 
-  // Sort by score and take top sentences
-  const topSentences = scoredSentences
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3) // Keep top 3 most relevant sentences
-    .map((item) => item.sentence)
-    .filter((s) => s.length > 0);
+  // Filter and sort by score, prioritize sentences with extracted info
+  const relevantSentences = scoredSentences
+    .filter((item) => item.score > 0 || item.hasRelevantInfo)
+    .sort((a, b) => {
+      // Prioritize sentences with extracted info
+      if (a.hasRelevantInfo && !b.hasRelevantInfo) return -1;
+      if (!a.hasRelevantInfo && b.hasRelevantInfo) return 1;
+      // Then sort by score
+      return b.score - a.score;
+    })
+    .slice(0, 5); // Keep top 5 most relevant sentences
 
-  // If no relevant sentences found, return a summary
-  if (topSentences.length === 0) {
-    return `[Summary] ${note.substring(0, 200)}${
-      note.length > 200 ? "..." : ""
+  // If we have sentences with extracted info, return those
+  const sentencesWithExtractedInfo = relevantSentences.filter(
+    (item) => item.hasRelevantInfo
+  );
+  if (sentencesWithExtractedInfo.length > 0) {
+    return (
+      sentencesWithExtractedInfo.map((item) => item.sentence).join(". ") + "."
+    );
+  }
+
+  // If no relevant sentences found, return a very short summary
+  if (relevantSentences.length === 0) {
+    return `[Summary] ${note.substring(0, 100)}${
+      note.length > 100 ? "..." : ""
     }`;
   }
 
-  return topSentences.join(". ") + ".";
+  // Return relevant sentences
+  return relevantSentences.map((item) => item.sentence).join(". ") + ".";
+}
+
+/**
+ * Extract minimal information for low relevance records
+ */
+function extractMinimalInformation(
+  note: string,
+  queryWords: string[],
+  query: string
+): string {
+  if (!note) return "";
+
+  // Look for specific patterns that are always relevant
+  const essentialPatterns = [
+    /victim[:\s]+([^.!?]+)/gi,
+    /suspect[:\s]+([^.!?]+)/gi,
+    /accused[:\s]+([^.!?]+)/gi,
+    /location[:\s]+([^.!?]+)/gi,
+    /place[:\s]+([^.!?]+)/gi,
+    /date[:\s]+([^.!?]+)/gi,
+    /time[:\s]+([^.!?]+)/gi,
+    /age[:\s]+(\d+)/gi,
+    /(\d+)\s*years?\s*old/gi,
+    /([A-Z][a-z]+\s+[A-Z][a-z]+)/g, // Names
+  ];
+
+  const extractedInfo: string[] = [];
+
+  essentialPatterns.forEach((pattern) => {
+    const matches = note.match(pattern);
+    if (matches) {
+      matches.forEach((match) => {
+        extractedInfo.push(match.trim());
+      });
+    }
+  });
+
+  // If we found essential info, return it
+  if (extractedInfo.length > 0) {
+    return `[Essential Info] ${extractedInfo.slice(0, 3).join(", ")}.`;
+  }
+
+  // Otherwise return a very short summary
+  return `[Summary] ${note.substring(0, 50)}${note.length > 50 ? "..." : ""}`;
 }
 
 /**
