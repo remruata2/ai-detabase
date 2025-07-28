@@ -49,8 +49,6 @@ const nextConfig: NextConfig = {
   webpack: (config, { isServer }) => {
     if (isServer) {
       // Server-side specific configuration
-      // No browser-specific plugins
-
       // Handle server-side rendering issues with browser globals
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -58,21 +56,24 @@ const nextConfig: NextConfig = {
         net: false,
         tls: false,
         child_process: false,
+        // Add fallbacks for browser globals that might be referenced
+        global: false,
+        globalThis: false,
       };
 
-      config.optimization.splitChunks = {
-        chunks: "all",
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          // Increase chunk size for AI processing
-          vendor: {
-            name: "vendor",
-            chunks: "all",
-            test: /node_modules/,
-            priority: 20,
-          },
-        },
+      // Disable problematic optimizations for server-side
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: false, // Disable chunk splitting for server
+      };
+    } else {
+      // Client-side configuration
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        child_process: false,
       };
     }
     return config;
