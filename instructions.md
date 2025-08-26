@@ -6,6 +6,20 @@ winget install -e --id OpenJS.NodeJS.LTS
 winget install -e --id Git.Git
 winget install -e --id PostgreSQL.PostgreSQL
 
+PostgreSQL install checklist (Windows):
+- Set a strong password for the `postgres` superuser in the installer.
+- Keep port 5432 and install Command Line Tools.
+- Ensure service is set to Automatic.
+- Verify CLI tools:
+```
+psql --version
+pg_restore --version
+```
+- If not found, add PostgreSQL bin to PATH :
+```
+setx PATH "$($env:PATH);C:\Program Files\PostgreSQL\16\bin"
+```
+
 2) Clone repository
 mkdir C:\Users\<you>\projects
 cd C:\Users\<you>\projects
@@ -31,6 +45,7 @@ pg_restore -U postgres -d cid_ai --no-owner --no-privileges -1 "C:\\Users\\<you>
 
 5) Install dependencies and build
 npm install
+npx prisma generate
 npm run build
 
 6) Database migrations (skip after full dump; run only if needed)
