@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack -p 3003",
+    "dev": "next dev -p 3003",
     "build": "next build --no-lint",
     "build:with-lint": "next build",
     "start": "next start -p 3003",

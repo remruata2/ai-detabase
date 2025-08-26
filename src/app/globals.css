@@ -1,5 +1,8 @@
+/* Limit Tailwind v4 content scanning strictly to app and components */
+@source "../app/**/*.{jsx,tsx,mdx,html}";
+@source "../components/**/*.{jsx,tsx,mdx}";
+
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
