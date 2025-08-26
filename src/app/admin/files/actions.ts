@@ -18,7 +18,127 @@ const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "documents");
 function ensureUploadDirExists() {
   if (!existsSync(UPLOAD_DIR)) {
     mkdirSync(UPLOAD_DIR, { recursive: true });
-    console.log(`Created upload directory: ${UPLOAD_DIR}`);
+  }
+}
+
+// Pagination + filtering types
+export type GetFilesParams = {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  category?: string;
+  year?: number; // calendar year from entry_date_real
+};
+
+export type PaginatedFiles = {
+  items: FileListEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+// Server-side pagination + filtering for files list
+export async function getFilesPaginated(params: GetFilesParams = {}): Promise<PaginatedFiles> {
+  const page = Math.max(1, params.page ?? 1);
+  const pageSize = Math.min(200, Math.max(1, params.pageSize ?? 50));
+
+  // Build where clause
+  const where: any = {};
+
+  if (params.category && params.category.trim() !== "") {
+    where.category = params.category;
+  }
+
+  // Year filter -> between Jan 1 and Dec 31
+  if (params.year && Number.isFinite(params.year)) {
+    const y = params.year;
+    const start = new Date(Date.UTC(y, 0, 1));
+    const end = new Date(Date.UTC(y + 1, 0, 1));
+    where.entry_date_real = {
+      gte: start,
+      lt: end,
+    };
+  }
+
+  // Simple text search across file_no, title, category (case-insensitive)
+  if (params.q && params.q.trim() !== "") {
+    const q = params.q.trim();
+    where.OR = [
+      { file_no: { contains: q, mode: "insensitive" as const } },
+      { title: { contains: q, mode: "insensitive" as const } },
+      { category: { contains: q, mode: "insensitive" as const } },
+    ];
+  }
+
+  try {
+    const [total, rows] = await Promise.all([
+      prisma.fileList.count({ where }),
+      prisma.fileList.findMany({
+        where,
+        orderBy: [
+          { entry_date_real: "desc" },
+          { id: "desc" },
+        ],
+        select: {
+          id: true,
+          file_no: true,
+          category: true,
+          title: true,
+          entry_date_real: true,
+          created_at: true,
+          doc1: true,
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    const items: FileListEntry[] = rows.map((file) => ({
+      ...file,
+      entry_date_real: file.entry_date_real?.toISOString() || null,
+      created_at: file.created_at?.toISOString() || null,
+    }));
+
+    return { items, total, page, pageSize };
+  } catch (error) {
+    console.error("Error fetching paginated files:", error);
+    throw new Error("Failed to fetch files.");
+  }
+}
+
+export type FileFilterOptions = {
+  categories: string[];
+  years: number[];
+};
+
+export async function getFilterOptions(): Promise<FileFilterOptions> {
+  try {
+    // Distinct categories via raw SQL to avoid Prisma validation on `not: null`
+    const categoriesRows: Array<{ category: string | null }> = await prisma.$queryRaw`
+      SELECT DISTINCT category
+      FROM file_list
+      WHERE category IS NOT NULL AND category <> ''
+      ORDER BY category ASC
+    `;
+    const categories = categoriesRows
+      .map((r) => r.category)
+      .filter((c): c is string => typeof c === 'string' && c.trim() !== '');
+
+    // Distinct years via raw SQL (faster than fetching all dates)
+    const yearsRows: Array<{ year: number | null }> = await prisma.$queryRaw`
+      SELECT DISTINCT EXTRACT(YEAR FROM entry_date_real)::int AS year
+      FROM file_list
+      WHERE entry_date_real IS NOT NULL
+      ORDER BY year DESC
+    `;
+    const years = yearsRows
+      .map((r) => (typeof r.year === "number" ? r.year : null))
+      .filter((y): y is number => y !== null);
+
+    return { categories, years };
+  } catch (error) {
+    console.error("Error fetching filter options:", error);
+    return { categories: [], years: [] };
   }
 }
 
@@ -318,6 +438,8 @@ export async function createFileAction(
   }
   ensureUploadDirExists();
 
+  
+
   const file = formData.get("doc1") as File | null;
   const rawFormData = Object.fromEntries(formData.entries());
   if (file && file.size === 0) {
@@ -354,9 +476,10 @@ export async function createFileAction(
 
   const { note, entry_date, content_format, ...restOfData } = validatedFields.data;
 
-  // Determine content format based on input source
-  // If file upload, content is markdown; if manual entry, content is HTML
-  const determinedContentFormat = file && file.size > 0 ? 'markdown' : 'html';
+  // Prefer the posted content_format (Option A). If not provided, infer from source
+  // Fallback: file upload -> markdown, manual entry -> html
+  const contentFormat = content_format ?? (file && file.size > 0 ? 'markdown' : 'html');
+
 
   let entryDateReal: Date | null = null;
   if (entry_date && entry_date.trim() !== "") {
@@ -372,12 +495,13 @@ export async function createFileAction(
       data: {
         ...restOfData,
         note: finalNote, // Use the potentially parsed content
-        content_format: determinedContentFormat, // Set content format based on input source
+        content_format: contentFormat, // Use posted format when provided; otherwise fallback
         doc1: doc1Path,
         entry_date: entry_date,
         entry_date_real: entryDateReal,
       },
     });
+
 
     // Manually update the search_vector using the correct note content
     await prisma.$executeRaw`
@@ -406,7 +530,7 @@ export async function createFileAction(
     revalidatePath("/admin/files");
     return {
       success: true,
-      message: "File created successfully.",
+      message: `File created successfully.`,
     };
   } catch (error) {
     console.error("Error creating file:", error);
@@ -449,9 +573,10 @@ export async function updateFileAction(
   const { note, entry_date, content_format, ...restOfData } = validatedFields.data;
   let finalNote = removeImagePlaceholder(note);
 
-  // Determine content format based on input source
-  // If file upload, content is markdown; if manual entry, content is HTML
-  const determinedContentFormat = file && file.size > 0 ? 'markdown' : 'html';
+  // Prefer the posted content_format (Option A). If not provided, infer from source
+  // Fallback: file upload -> markdown, manual entry -> html
+  const contentFormat = content_format ?? (file && file.size > 0 ? 'markdown' : 'html');
+
 
   let entryDateReal: Date | null = null;
   if (entry_date && entry_date.trim() !== "") {
@@ -466,7 +591,7 @@ export async function updateFileAction(
   const prismaDataForUpdate: any = {
     ...restOfData,
     note: finalNote, // This will be overwritten by parsed content if a file is uploaded
-    content_format: determinedContentFormat, // Set content format based on input source
+    content_format: contentFormat, // Use posted format when provided; otherwise fallback
     entry_date: entry_date,
     entry_date_real: entryDateReal,
   };
@@ -488,7 +613,6 @@ export async function updateFileAction(
         if (existsSync(oldFilePathServer)) {
           try {
             await fs.unlink(oldFilePathServer);
-            console.log(`Old file deleted: ${oldFilePathServer}`);
           } catch (delError) {
             console.error(
               `Error deleting old file ${oldFilePathServer}:`,
@@ -505,9 +629,6 @@ export async function updateFileAction(
       const newFilePathOnServer = path.join(UPLOAD_DIR, filename);
       await fs.writeFile(newFilePathOnServer, buffer);
       prismaDataForUpdate.doc1 = `/uploads/documents/${filename}`;
-      console.log(
-        `New file uploaded successfully: ${prismaDataForUpdate.doc1}`
-      );
 
       // The note field is already populated with the parsed content from the frontend,
       // so we just use that. The `finalNote` variable is updated from the form data
@@ -547,7 +668,6 @@ export async function updateFileAction(
     if (finalNote && finalNote.trim().length > 0) {
       try {
         await SemanticVectorService.updateSemanticVector(id, finalNote);
-        console.log(`✅ Semantic vector updated for file ${id}`);
       } catch (vectorError) {
         console.error("❌ Semantic vector update failed:", vectorError);
         // Don't fail the entire operation if semantic vector fails

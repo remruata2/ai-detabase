@@ -6,7 +6,7 @@ import { UserRole } from '@/generated/prisma';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { pageContainer, pageTitle } from '@/styles/ui-classes';
-import { getFiles, FileListEntry } from './actions'; 
+import { getFilesPaginated, getFilterOptions } from './actions'; 
 import FileListClient from './FileListClient';
 export default async function FilesPage() {
   const session = await getServerSession(authOptions);
@@ -19,33 +19,60 @@ export default async function FilesPage() {
     redirect('/unauthorized');
   }
 
-  let files: FileListEntry[] = [];
   let error: string | null = null;
 
   try {
-    files = await getFiles();
+    // Initial load: first page with defaults
+    const [{ items, total, page, pageSize }, filterOptions] = await Promise.all([
+      getFilesPaginated({ page: 1, pageSize: 50 }),
+      getFilterOptions(),
+    ]);
+    return (
+      <div className={pageContainer}>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className={pageTitle}>Manage Files</h1>
+          <Button asChild className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Link href="/admin/files/new">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create New File
+            </Link>
+          </Button>
+        </div>
+        <FileListClient
+          initialItems={items}
+          initialTotal={total}
+          initialPage={page}
+          initialPageSize={pageSize}
+          filterOptions={filterOptions}
+          initialError={error}
+          canDelete={session.user.role === UserRole.admin}
+        />
+      </div>
+    );
   } catch (err) {
     console.error('Failed to fetch files on server:', err);
     error = 'Failed to load files. Please try again later.';
-    // Optionally, you could render an error message directly here if FileListClient isn't used
-  }
-
-  return (
-    <div className={pageContainer}>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className={pageTitle}>Manage Files</h1>
-        <Button asChild className="bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Link href="/admin/files/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create New File
-          </Link>
-        </Button>
+    return (
+      <div className={pageContainer}>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className={pageTitle}>Manage Files</h1>
+          <Button asChild className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Link href="/admin/files/new">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create New File
+            </Link>
+          </Button>
+        </div>
+        <FileListClient
+          initialItems={[]}
+          initialTotal={0}
+          initialPage={1}
+          initialPageSize={50}
+          filterOptions={{ categories: [], years: [] }}
+          initialError={error}
+          canDelete={session.user.role === UserRole.admin}
+        />
       </div>
-      <FileListClient
-        initialFiles={files}
-        initialError={error}
-        canDelete={session.user.role === UserRole.admin}
-      />
-    </div>
-  );
+    );
+  }
 }

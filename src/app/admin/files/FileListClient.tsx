@@ -24,86 +24,89 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Eye, Pencil, Trash2, Search, Filter, X, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { FileListEntry, deleteFileAction } from "./actions";
+import { deleteFileAction } from "./actions";
 import { cardContainer } from "@/styles/ui-classes";
 import { format } from "date-fns";
 
+import type { FileListEntry, FileFilterOptions } from './actions';
+
 interface FileListClientProps {
-	initialFiles: FileListEntry[];
+	initialItems: FileListEntry[];
+	initialTotal: number;
+	initialPage: number;
+	initialPageSize: number;
+	filterOptions: FileFilterOptions;
 	initialError?: string | null;
 	canDelete?: boolean;
 }
 
 export default function FileListClient({
-	initialFiles,
+	initialItems,
+	initialTotal,
+	initialPage,
+	initialPageSize,
+	filterOptions,
 	initialError,
 	canDelete = false,
 }: FileListClientProps) {
-	const [files, setFiles] = useState<FileListEntry[]>(initialFiles);
+	const [items, setItems] = useState<FileListEntry[]>(initialItems);
+	const [total, setTotal] = useState<number>(initialTotal);
+	const [page, setPage] = useState<number>(initialPage);
+	const [pageSize, setPageSize] = useState<number>(initialPageSize);
 	const [error, setError] = useState<string | null>(initialError || null);
 	const [loading, setLoading] = useState<boolean>(false);
 	const [itemToDelete, setItemToDelete] = useState<FileListEntry | null>(null);
 
-	// Filter states
+	// Filters
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState("");
 	const [selectedYear, setSelectedYear] = useState("");
 
-	useEffect(() => {
-		setFiles(initialFiles);
-	}, [initialFiles]);
-
+	// Debounced fetch
 	useEffect(() => {
 		setError(initialError || null);
 	}, [initialError]);
 
-	// Get unique categories and years for filter dropdowns
-	const { uniqueCategories, uniqueYears } = useMemo(() => {
-		const categories = [...new Set(files.map((file) => file.category))]
-			.filter(Boolean)
-			.sort();
-		const years = [
-			...new Set(
-				files.map((file) => {
-					if (file.entry_date_real) {
-						return new Date(file.entry_date_real).getFullYear().toString();
-					}
-					return null;
-				})
-			),
-		]
-			.filter((year): year is string => year !== null)
-			.sort((a, b) => parseInt(b) - parseInt(a));
-
-		return { uniqueCategories: categories, uniqueYears: years };
-	}, [files]);
-
-	// Filter files based on search and filter criteria
-	const filteredFiles = useMemo(() => {
-		return files.filter((file) => {
-			const matchesSearch =
-				searchQuery === "" ||
-				file.file_no.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				file.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				file.category.toLowerCase().includes(searchQuery.toLowerCase());
-
-			const matchesCategory =
-				selectedCategory === "" || file.category === selectedCategory;
-
-			const matchesYear =
-				selectedYear === "" ||
-				(file.entry_date_real &&
-					new Date(file.entry_date_real).getFullYear().toString() ===
-						selectedYear);
-
-			return matchesSearch && matchesCategory && matchesYear;
-		});
-	}, [files, searchQuery, selectedCategory, selectedYear]);
+	useEffect(() => {
+		let active = true;
+		setLoading(true);
+		const handler = setTimeout(async () => {
+			try {
+				const params = new URLSearchParams();
+				params.set('page', String(page));
+				params.set('pageSize', String(pageSize));
+				if (searchQuery.trim()) params.set('q', searchQuery.trim());
+				if (selectedCategory) params.set('category', selectedCategory);
+				if (selectedYear) params.set('year', selectedYear);
+				const res = await fetch(`/api/admin/files?${params.toString()}`);
+				if (!res.ok) throw new Error('Failed to fetch');
+				const data = await res.json();
+				if (!active) return;
+				setItems(data.items || []);
+				setTotal(data.total || 0);
+				setPage(data.page || 1);
+				setPageSize(data.pageSize || pageSize);
+				setError(null);
+			} catch (e) {
+				if (!active) return;
+				setError('Failed to load files');
+				setItems([]);
+				setTotal(0);
+			} finally {
+				if (active) setLoading(false);
+			}
+		}, 350); // debounce
+		return () => {
+			active = false;
+			clearTimeout(handler);
+		};
+	}, [page, pageSize, searchQuery, selectedCategory, selectedYear]);
 
 	const clearFilters = () => {
 		setSearchQuery("");
 		setSelectedCategory("");
 		setSelectedYear("");
+		setPage(1);
 	};
 
 	const hasActiveFilters = searchQuery || selectedCategory || selectedYear;
@@ -114,7 +117,8 @@ export default function FileListClient({
 		try {
 			const result = await deleteFileAction(itemToDelete.id);
 			if (result.success) {
-				setFiles(files.filter((file) => file.id !== itemToDelete.id));
+				setItems((prev) => prev.filter((f) => f.id !== itemToDelete.id));
+				setTotal((t) => Math.max(0, t - 1));
 				toast.success(result.message || "File deleted successfully!");
 			} else {
 				toast.error(result.error || "Failed to delete file.");
@@ -153,11 +157,11 @@ export default function FileListClient({
 					{/* Category Filter */}
 					<select
 						value={selectedCategory}
-						onChange={(e) => setSelectedCategory(e.target.value)}
+						onChange={(e) => { setSelectedCategory(e.target.value); setPage(1); }}
 						className="px-3 py-2 border border-gray-300 rounded-md bg-white min-w-[180px] focus:outline-none focus:ring-2 focus:ring-blue-500"
 					>
 						<option value="">All Categories</option>
-						{uniqueCategories.map((category) => (
+						{filterOptions.categories.map((category) => (
 							<option key={category} value={category}>
 								{category}
 							</option>
@@ -167,12 +171,12 @@ export default function FileListClient({
 					{/* Year Filter */}
 					<select
 						value={selectedYear}
-						onChange={(e) => setSelectedYear(e.target.value)}
+						onChange={(e) => { setSelectedYear(e.target.value); setPage(1); }}
 						className="px-3 py-2 border border-gray-300 rounded-md bg-white min-w-[140px] focus:outline-none focus:ring-2 focus:ring-blue-500"
 					>
 						<option value="">All Years</option>
-						{uniqueYears.map((year) => (
-							<option key={year} value={year}>
+						{filterOptions.years.map((year) => (
+							<option key={year} value={String(year)}>
 								{year}
 							</option>
 						))}
@@ -194,8 +198,7 @@ export default function FileListClient({
 				{/* Results Count */}
 				<div className="flex items-center justify-between text-sm text-gray-600">
 					<span>
-						Showing {filteredFiles.length} of {files.length} files
-						{hasActiveFilters && " (filtered)"}
+						Showing {items.length} of {total} files{hasActiveFilters && " (filtered)"}
 					</span>
 					{hasActiveFilters && (
 						<div className="flex items-center gap-2">
@@ -207,7 +210,7 @@ export default function FileListClient({
 			</div>
 
 			{/* Files Table */}
-			{filteredFiles.length === 0 && !loading ? (
+			{items.length === 0 && !loading ? (
 				<div className="text-center py-8">
 					{hasActiveFilters ? (
 						<div>
@@ -234,7 +237,7 @@ export default function FileListClient({
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{filteredFiles.map((file) => (
+						{items.map((file) => (
 							<TableRow key={file.id}>
 								<TableCell className="font-medium">{file.file_no}</TableCell>
 								<TableCell
@@ -295,6 +298,21 @@ export default function FileListClient({
 					</TableBody>
 				</Table>
 			)}
+
+			{/* Pagination Controls */}
+			<div className="mt-4 flex items-center justify-between">
+				<div className="text-sm text-gray-600">
+					Page {page} of {Math.max(1, Math.ceil(total / pageSize))}
+				</div>
+				<div className="flex items-center gap-2">
+					<Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1 || loading}>
+						Prev
+					</Button>
+					<Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page >= Math.ceil(total / pageSize) || loading}>
+						Next
+					</Button>
+				</div>
+			</div>
 
 			{canDelete && (
 				<AlertDialog
