@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
   // Configure compiler options
@@ -20,15 +19,7 @@ const nextConfig: NextConfig = {
       // Increase body size limit to 50MB for file uploads
       bodySizeLimit: "50mb",
     },
-    // Constrain file tracing to project root to avoid scanning Windows junctions
-    outputFileTracingRoot: path.resolve(__dirname),
-    // Exclude problematic Windows junction directories that can cause EPERM
-    outputFileTracingExcludes: {
-      "*": [
-        "**/Application Data/**",
-        "**/AppData/**",
-      ],
-    },
+    // Increase timeout for server components
   },
   // Allow cross-origin requests from demo.lushaimedia.in
   allowedDevOrigins: ["demo.lushaimedia.in"],
