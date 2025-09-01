@@ -920,7 +920,7 @@ export default function AdminChatPage() {
             const indent = (line.match(/^(\s*)/)?.[1]?.length || 0) * 2;
             const content = line.replace(/^[\s]*[-*+]\s/, '');
             checkNewPage();
-            doc.setFont(undefined, 'normal');
+            doc.setFont('helvetica', 'normal');
             doc.setFontSize(12);
             doc.text('•', margin + indent, currentY);
             
@@ -937,7 +937,7 @@ export default function AdminChatPage() {
               const number = match[1];
               const content = match[2];
               checkNewPage();
-              doc.setFont(undefined, 'normal');
+              doc.setFont('helvetica', 'normal');
               doc.setFontSize(12);
               doc.text(`${number}.`, margin + indent, currentY);
               
@@ -1015,11 +1015,11 @@ export default function AdminChatPage() {
           
           // Set font based on formatting
           if (segment.bold) {
-            doc.setFont(undefined, 'bold');
+            doc.setFont('helvetica', 'bold');
           } else if (segment.code) {
             doc.setFont('courier', 'normal');
           } else {
-            doc.setFont(undefined, 'normal');
+            doc.setFont('helvetica', 'normal');
           }
           
           doc.setFontSize(12);
@@ -1043,13 +1043,13 @@ export default function AdminChatPage() {
 
       // Add title
       doc.setFontSize(16);
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text('CID AI Response', margin, currentY);
       currentY += 15;
 
       // Add timestamp
       doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       doc.text(`Generated: ${new Date().toLocaleString()}`, margin, currentY);
       currentY += 20;
 
@@ -1061,12 +1061,12 @@ export default function AdminChatPage() {
         currentY += 15;
         checkNewPage(30);
         
-        doc.setFont(undefined, 'bold');
+        doc.setFont('helvetica', 'bold');
         doc.setFontSize(14);
         doc.text('Sources:', margin, currentY);
         currentY += 15;
         
-        doc.setFont(undefined, 'normal');
+        doc.setFont('helvetica', 'normal');
         doc.setFontSize(12);
         sources.forEach((source, index) => {
           checkNewPage();
