@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { LlamaParseDocumentParser } from "@/lib/llamaparse-document-parser";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-options";
+import { trackUsage } from "@/lib/usage";
+import { UsageType } from "@/generated/prisma";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
@@ -8,6 +12,11 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   console.log("[PARSE-DOCUMENT] API called");
+
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   let tempFilePath: string | undefined;
 
@@ -49,6 +58,9 @@ export async function POST(req: NextRequest) {
     console.log(
       "[PARSE-DOCUMENT] Document parsed successfully with LlamaParse"
     );
+
+    // Track file upload usage
+    await trackUsage(parseInt(session.user.id), UsageType.file_upload);
 
     return NextResponse.json({ success: true, content });
   } catch (error) {

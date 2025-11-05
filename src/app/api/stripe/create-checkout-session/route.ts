@@ -4,6 +4,10 @@ import { authOptions } from '@/lib/auth-options';
 import { stripe } from '@/lib/stripe';
 import { db } from '@/lib/db';
 
+export async function GET(request: NextRequest) {
+  return POST(request);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -12,7 +16,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { priceId } = await request.json();
+    let priceId = null;
+    if (request.method === 'POST') {
+      const body = await request.json();
+      priceId = body.priceId;
+    }
+
+    // For GET requests (from pricing page), get planId from query
+    const url = new URL(request.url);
+    const planId = url.searchParams.get('planId');
+
+    if (!priceId && !planId) {
+      return NextResponse.json({ error: 'priceId or planId required' }, { status: 400 });
+    }
 
     // Get or create Stripe customer
     let customerId = null;
@@ -31,13 +47,38 @@ export async function POST(request: NextRequest) {
       customerId = customer.id;
     }
 
+    let priceIdToUse = priceId;
+
+    if (planId) {
+      // Get plan and create price or use existing
+      const plan = await db.subscriptionPlan.findUnique({
+        where: { id: parseInt(planId) },
+      });
+      if (!plan) {
+        return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
+      }
+
+      // For now, assume we have Stripe price IDs stored or create on the fly
+      // In production, you'd have price IDs in the plan table
+      // For demo, create price
+      const price = await stripe.prices.create({
+        unit_amount: plan.price * 100, // cents
+        currency: plan.currency.toLowerCase(),
+        recurring: { interval: plan.interval as 'month' | 'year' },
+        product_data: {
+          name: plan.name,
+        },
+      });
+      priceIdToUse = price.id;
+    }
+
     // Create checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       line_items: [
         {
-          price: priceId,
+          price: priceIdToUse,
           quantity: 1,
         },
       ],
