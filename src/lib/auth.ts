@@ -3,8 +3,10 @@ import { UserRole } from "@/generated/prisma";
 
 // Define the role hierarchy
 const ROLE_HIERARCHY = {
+	public: 0,
 	staff: 1,
-	admin: 2,
+	premium: 2,
+	admin: 3,
 } as const;
 
 /**

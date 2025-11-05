@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
-import { stripe } from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 import { db } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
     if (!priceId && !planId) {
       return NextResponse.json({ error: 'priceId or planId required' }, { status: 400 });
     }
+
+    const stripe = getStripe();
 
     // Get or create Stripe customer
     let customerId = null;

@@ -29,6 +29,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
       if (rawUser) {
         user = {
           ...rawUser,
+          username: rawUser.username || '',
           // Ensure Date objects are converted to ISO strings for serialization
           last_login: rawUser.last_login ? new Date(rawUser.last_login).toISOString() : null,
           created_at: rawUser.created_at ? new Date(rawUser.created_at).toISOString() : null,

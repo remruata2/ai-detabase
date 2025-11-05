@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -35,6 +35,7 @@ export default async function BillingPage() {
   }
 
   // Get invoices from Stripe
+  const stripe = getStripe();
   const invoices = await stripe.invoices.list({
     customer: subscription.stripe_customer_id,
     limit: 10,
