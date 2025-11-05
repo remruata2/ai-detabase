@@ -27,6 +27,12 @@ declare module "next-auth/jwt" {
 	interface JWT extends AppUser {}
 }
 
+console.log('Initializing auth options with:', {
+	clientId: process.env.AUTH0_CLIENT_ID,
+	issuer: process.env.AUTH0_ISSUER,
+	nextauthUrl: process.env.NEXTAUTH_URL,
+});
+
 export const authOptions: NextAuthOptions = {
 	providers: [
 		CredentialsProvider({
