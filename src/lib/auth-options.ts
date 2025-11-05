@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import Auth0Provider from "next-auth/providers/auth0";
 import { compare } from "bcryptjs";
 import { db } from "./db";
 // Import UserRole from the generated Prisma client
@@ -11,7 +12,7 @@ type AppUser = {
 	role: UserRole;
 	username: string;
 	email: string;
-	name: string;
+	name?: string;
 };
 
 declare module "next-auth" {
@@ -60,20 +61,49 @@ export const authOptions: NextAuthOptions = {
 
 				return {
 					id: String(user.id),
-					username: user.username,
+					username: user.username!,
 					role: user.role,
-					email: user.username, // Use username as email for NextAuth compatibility
-					name: user.username, // Use username as name for NextAuth compatibility
+					email: user.email || user.username!,
+					name: user.username,
 				};
 			},
 		}),
+		Auth0Provider({
+			clientId: process.env.AUTH0_CLIENT_ID!,
+			clientSecret: process.env.AUTH0_CLIENT_SECRET!,
+			issuer: process.env.AUTH0_ISSUER!,
+		}),
 	],
 	callbacks: {
+		async signIn({ user, account }) {
+			if (account?.provider === 'auth0') {
+				// Find or create user for Auth0
+				let dbUser = await db.user.findUnique({
+					where: { auth0_id: user.id },
+				});
+				if (!dbUser) {
+					dbUser = await db.user.create({
+						data: {
+							auth0_id: user.id,
+							email: user.email,
+							role: 'public',
+							auth_provider: 'auth0',
+							username: user.email, // Use email as username for Auth0 users
+						},
+					});
+				}
+				user.id = String(dbUser.id);
+				user.role = dbUser.role;
+				user.username = dbUser.username || dbUser.email!;
+			}
+			return true;
+		},
 		async jwt({ token, user }) {
 			if (user) {
 				token.id = user.id;
 				token.role = user.role;
 				token.username = user.username;
+				token.email = user.email;
 			}
 			return token;
 		},
@@ -82,6 +112,7 @@ export const authOptions: NextAuthOptions = {
 				session.user.id = token.id;
 				session.user.role = token.role as UserRole;
 				session.user.username = token.username;
+				session.user.email = token.email!;
 			}
 			return session;
 		},
