@@ -8,7 +8,7 @@ export default function Home() {
       {/* Header */}
       <header className="container mx-auto px-4 py-6">
         <nav className="flex justify-between items-center">
-          <div className="text-2xl font-bold text-blue-600">ICPS AI</div>
+          <div className="text-2xl font-bold text-blue-600">SmartDocs AI</div>
           <div className="space-x-4">
             <Link href="/login">
               <Button variant="ghost">Sign In</Button>
@@ -23,7 +23,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
         <h1 className="text-5xl font-bold text-gray-900 mb-6">
-          AI-Powered Document Processing
+          SmartDocs AI
         </h1>
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
           Transform your documents with advanced AI. Upload, chat, and extract insights from your files effortlessly.
@@ -123,7 +123,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="container mx-auto px-4 text-center">
-          <p>&copy; 2024 ICPS AI. All rights reserved.</p>
+          <p>&copy; 2024 SmartDocs AI. All rights reserved.</p>
         </div>
       </footer>
     </div>
