@@ -76,12 +76,15 @@ export const authOptions: NextAuthOptions = {
 	],
 	callbacks: {
 		async signIn({ user, account }) {
+			console.log('SignIn callback:', { user, account });
 			if (account?.provider === 'auth0') {
+				console.log('Processing Auth0 user');
 				// Find or create user for Auth0
 				let dbUser = await db.user.findUnique({
 					where: { auth0_id: user.id },
 				});
 				if (!dbUser) {
+					console.log('Creating new Auth0 user');
 					dbUser = await db.user.create({
 						data: {
 							auth0_id: user.id,
@@ -94,7 +97,7 @@ export const authOptions: NextAuthOptions = {
 				}
 				user.id = String(dbUser.id);
 				user.role = dbUser.role;
-				user.username = dbUser.username || dbUser.email!;
+				user.username = dbUser.username || dbUser.email || '';
 			}
 			return true;
 		},
