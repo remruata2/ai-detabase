@@ -21,8 +21,8 @@ const nextConfig: NextConfig = {
     },
     // Increase timeout for server components
   },
-  // Allow cross-origin requests from demo.lushaimedia.in
-  allowedDevOrigins: ["demo.lushaimedia.in"],
+  // Allow cross-origin requests from demo.lushaimedia.in and ngrok
+  allowedDevOrigins: ["demo.lushaimedia.in", "transponible-rosalee-nonsubversively.ngrok-free.dev"],
   // Add timeout configurations
   async headers() {
     return [
