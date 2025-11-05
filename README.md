@@ -1,4 +1,4 @@
-# ICPS AI - AI-Powered Document Processing SaaS
+# SmartDocs AI - AI-Powered Document Processing SaaS
 
 A SaaS platform for AI-powered document processing with subscription-based monetization, built with Next.js.
 

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CID AI",
-  description: "Criminal Investigation Department AI Assistant",
+  title: "SmartDocs AI",
+  description: "AI-Powered Document Processing SaaS Platform",
 };
 
 export default function RootLayout({
