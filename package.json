@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3003",
+    "dev": "next dev -p 3000",
     "build": "next build --no-lint",
     "build:with-lint": "next build",
-    "start": "next start -p 3003",
+    "start": "next start -p 3000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "jest",
