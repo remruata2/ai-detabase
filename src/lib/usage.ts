@@ -1,5 +1,6 @@
 import { db } from './db';
 import { UsageType } from '../generated/prisma';
+import { cache } from './cache';
 
 export async function trackUsage(userId: number, type: UsageType) {
   const now = new Date();
@@ -35,6 +36,10 @@ export async function getUsage(userId: number, type: UsageType): Promise<number>
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
 
+  const cacheKey = `usage:${userId}:${type}:${month}:${year}`;
+  const cached = cache.get<number>(cacheKey);
+  if (cached !== null) return cached;
+
   const usage = await db.usageTracking.findUnique({
     where: {
       user_id_type_month_year: {
@@ -46,10 +51,16 @@ export async function getUsage(userId: number, type: UsageType): Promise<number>
     },
   });
 
-  return usage?.count || 0;
+  const count = usage?.count || 0;
+  cache.set(cacheKey, count, 2 * 60 * 1000); // 2 min cache
+  return count;
 }
 
 export async function getUserLimits(userId: number) {
+  const cacheKey = `limits:${userId}`;
+  const cached = cache.get<any>(cacheKey);
+  if (cached) return cached;
+
   // Get user's subscription
   const user = await db.user.findUnique({
     where: { id: userId },
@@ -63,23 +74,27 @@ export async function getUserLimits(userId: number) {
     },
   });
 
+  let limits;
   if (!user?.subscriptions?.[0]) {
     // Free plan defaults
-    return {
+    limits = {
       fileUploads: 10,
       chatMessages: 20,
       documentExports: 5,
       aiModels: 'basic',
     };
+  } else {
+    const plan = user.subscriptions[0].plan;
+    limits = plan.features as {
+      fileUploads: number;
+      chatMessages: number;
+      documentExports: number;
+      aiModels: string;
+    };
   }
 
-  const plan = user.subscriptions[0].plan;
-  return plan.features as {
-    fileUploads: number;
-    chatMessages: number;
-    documentExports: number;
-    aiModels: string;
-  };
+  cache.set(cacheKey, limits, 10 * 60 * 1000); // 10 min cache
+  return limits;
 }
 
 export async function checkLimit(userId: number, type: UsageType): Promise<boolean> {

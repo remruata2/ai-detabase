@@ -1,15 +1,17 @@
-# ICPS AI - Next.js Starter with Authentication
+# ICPS AI - AI-Powered Document Processing SaaS
 
-A modern Next.js starter template with built-in authentication, role-based access control, and Prisma ORM integration.
+A SaaS platform for AI-powered document processing with subscription-based monetization, built with Next.js.
 
 ## Features
 
-- 🔐 NextAuth.js authentication
-- 👥 Role-based access control (RBAC)
+- 🤖 AI-powered document processing and chat
+- 💳 Subscription-based monetization with Stripe
+- 🔐 Hybrid authentication (Auth0 for public users, credentials for admins)
+- 📊 Usage tracking and limits
 - 🗄️ Prisma ORM with PostgreSQL
 - 🎨 Shadcn UI components
 - 🛡️ TypeScript support
-- ⚡ Server Actions for data mutations
+- 📈 Billing history and invoice management
 
 ## Prerequisites
 
@@ -67,10 +69,10 @@ A modern Next.js starter template with built-in authentication, role-based acces
 
 ## Authentication
 
-This project uses NextAuth.js for authentication. The following features are included:
+This project uses NextAuth.js with Auth0 integration for authentication:
 
-- Email/Password authentication
-- OAuth support (Google, GitHub, etc.)
+- Auth0 OAuth for public user registration/login
+- Username/Password for admin users
 - Role-based access control
 - Protected API routes
 
@@ -78,15 +80,19 @@ This project uses NextAuth.js for authentication. The following features are inc
 
 - `ADMIN`: Full access to all features
 - `STAFF`: Limited access
+- `PUBLIC`: Basic user access
+- `PREMIUM`: Unlimited access
 
 ## Database Schema
 
 The project uses Prisma ORM with the following models:
 
 - `User`: User accounts and authentication
-- `Account`: OAuth account connections
-- `Session`: User sessions
-- `VerificationToken`: Email verification tokens
+- `SubscriptionPlan`: Available subscription plans
+- `UserSubscription`: User subscription records
+- `UsageTracking`: Usage tracking for limits
+- `FileList`: Document storage
+- `AiApiKey`: AI provider API keys
 
 ## Environment Variables
 
@@ -95,8 +101,11 @@ The project uses Prisma ORM with the following models:
 | DATABASE_URL | Yes | PostgreSQL connection string |
 | NEXTAUTH_SECRET | Yes | Secret key for NextAuth.js |
 | NEXTAUTH_URL | Yes | Base URL of your application |
-| GOOGLE_CLIENT_ID | No | Google OAuth client ID |
-| GOOGLE_CLIENT_SECRET | No | Google OAuth client secret |
+| AUTH0_CLIENT_ID | Yes | Auth0 client ID |
+| AUTH0_CLIENT_SECRET | Yes | Auth0 client secret |
+| AUTH0_ISSUER | Yes | Auth0 issuer URL |
+| STRIPE_SECRET_KEY | Yes | Stripe secret key |
+| STRIPE_WEBHOOK_SECRET | Yes | Stripe webhook secret |
 
 ## Project Structure
 
@@ -104,15 +113,50 @@ The project uses Prisma ORM with the following models:
 src/
 ├── app/                    # App router
 │   ├── api/                # API routes
-│   ├── auth/               # Authentication pages
-│   └── dashboard/          # Protected routes
+│   │   ├── auth/           # NextAuth routes
+│   │   ├── stripe/         # Stripe integration
+│   │   └── chat/           # Chat API
+│   ├── dashboard/          # User dashboard
+│   ├── billing/            # Billing history
+│   ├── pricing/            # Subscription plans
+│   └── landing/            # Public landing page
 ├── components/             # Reusable components
-│   ├── auth/               # Auth components
-│   └── ui/                 # UI components
+│   ├── ui/                 # Shadcn UI components
+│   └── ChangePlan.tsx      # Plan change component
 ├── lib/                    # Utility functions
-│   └── auth.ts             # Auth utilities
+│   ├── auth-options.ts     # NextAuth configuration
+│   ├── usage.ts            # Usage tracking
+│   ├── stripe.ts           # Stripe client
+│   └── cache.ts            # Simple caching
 ├── prisma/                 # Prisma schema
-└── types/                  # TypeScript types
+└── scripts/                # Utility scripts
+```
+
+## Subscription Plans
+
+- **Free**: 10 file uploads, 20 chat messages, 5 exports per month
+- **Premium**: Unlimited usage, advanced AI models ($29/month)
+
+## API Documentation
+
+### Chat API
+```
+POST /api/chat
+Content-Type: application/json
+
+{
+  "message": "Your question",
+  "conversationHistory": [...],
+  "provider": "gemini"
+}
+```
+
+### File Upload
+```
+POST /api/parse-document
+Content-Type: multipart/form-data
+
+file: <uploaded file>
 ```
 
 ## Deployment
