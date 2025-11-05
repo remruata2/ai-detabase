@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "ICPS AI Chat API is available",
+      message: "SmartDocs AI Chat API is available",
       user: session.user.email,
       timestamp: new Date().toISOString(),
     });

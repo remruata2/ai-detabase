@@ -167,7 +167,7 @@ export async function analyzeQueryForSearch(
 						.join("\n")}\n`
 				: "";
 
-		const prompt = `You are an AI assistant analyzing queries for a ICPS (Criminal Investigation Department) database search system.
+		const prompt = `You are an AI assistant analyzing queries for a SmartDocs AI document processing system.
 
 ${historyContext}
 
@@ -995,7 +995,7 @@ export function prepareContextForAI(
 DATABASE CONTEXT:
 
 === OVERVIEW ===
-Found ${processedRecords.length} relevant records from the ICPS database.
+	Found ${processedRecords.length} relevant records from the document database.
 The records span ${Object.keys(recordsByCategory).length} categories.
 Records are listed below ordered by relevance to your query.
 
@@ -1138,7 +1138,7 @@ export async function generateAIResponse(
 `;
 	}
 
-	const prompt = `You are a helpful AI assistant for the ICPS (Criminal Investigation Department) database system.\n\n${historyContext}\n\nCURRENT QUESTION: "${question}"\n\n${context}\n\nINSTRUCTIONS:\n${roleInstructions}\n\n- Always be professional and factual\n- If asked about specific cases, provide file numbers and relevant details\n- If no relevant information is found, say so clearly\n- Keep responses concise but informative\n- Use bullet points or numbered lists when presenting multiple items\n\nPlease provide a helpful response based on the database records above.`;
+	const prompt = `You are a helpful AI assistant for the SmartDocs AI document processing system.\n\n${historyContext}\n\nCURRENT QUESTION: "${question}"\n\n${context}\n\nINSTRUCTIONS:\n${roleInstructions}\n\n- Always be professional and factual\n- If asked about specific documents, provide file names and relevant details\n- If no relevant information is found, say so clearly\n- Keep responses concise but informative\n- Use bullet points or numbered lists when presenting multiple items\n\nPlease provide a helpful response based on the document records above.`;
 
 	let lastError: any = null;
 	for (const modelName of attemptModels) {

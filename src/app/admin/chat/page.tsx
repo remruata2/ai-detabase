@@ -564,7 +564,7 @@ export default function AdminChatPage() {
       // Add title
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('ICPS AI Response', margin, currentY);
+      doc.text('SmartDocs AI Response', margin, currentY);
       currentY += 15;
 
       // Add timestamp
@@ -736,7 +736,7 @@ export default function AdminChatPage() {
                 <Bot className="h-12 w-12" />
                 <div className="text-center">
                   <p className="text-lg font-medium">
-                    Welcome to ICPS AI Assistant
+                    Welcome to SmartDocs AI Assistant
                   </p>
                   <p className="text-sm">
                     Ask me anything about the database records
@@ -1017,7 +1017,7 @@ export default function AdminChatPage() {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask about ICPS database records..."
+                placeholder="Ask about documents..."
                 disabled={isLoading}
                 className="flex-1"
                 maxLength={1000}

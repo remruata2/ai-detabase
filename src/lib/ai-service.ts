@@ -90,7 +90,7 @@ function prepareContextForAI(records: SearchResult[]): string {
 
   return `
 DATABASE CONTEXT:
-Found ${records.length} relevant records from the ICPS database:
+  Found ${records.length} relevant records from the document database:
 
 ${context
   .map(
@@ -118,7 +118,7 @@ export async function generateAIResponse(
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    const prompt = `You are an AI assistant for the ICPS (Criminal Investigation Department) database system. 
+    const prompt = `You are an AI assistant for the SmartDocs AI document processing system. 
 
 Your role is to:
 - Answer questions based ONLY on the provided database records
@@ -167,7 +167,7 @@ export async function processChatMessage(
     if (records.length === 0) {
       return {
         response:
-          "I couldn't find any relevant records in the ICPS database for your query. Please try rephrasing your question or using different keywords.",
+          "I couldn't find any relevant records in the document database for your query. Please try rephrasing your question or using different keywords.",
         sources: [],
         searchQuery: question,
       };

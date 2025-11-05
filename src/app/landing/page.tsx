@@ -8,7 +8,7 @@ export default function LandingPage() {
       {/* Header */}
       <header className="container mx-auto px-4 py-6">
         <nav className="flex justify-between items-center">
-          <div className="text-2xl font-bold text-blue-600">ICPS AI</div>
+          <div className="text-2xl font-bold text-blue-600">SmartDocs AI</div>
           <div className="space-x-4">
             <Link href="/login">
               <Button variant="ghost">Sign In</Button>
@@ -123,7 +123,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="container mx-auto px-4 text-center">
-          <p>&copy; 2024 ICPS AI. All rights reserved.</p>
+          <p>&copy; 2024 SmartDocs AI. All rights reserved.</p>
         </div>
       </footer>
     </div>
