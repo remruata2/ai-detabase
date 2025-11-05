@@ -7,6 +7,7 @@ import { UsageType } from "@/generated/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { ChangePlan } from "@/components/ChangePlan";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -33,6 +34,12 @@ export default async function DashboardPage() {
   const subscription = user?.subscriptions?.[0];
   const plan = subscription?.plan;
 
+  // Get all plans for upgrade options
+  const allPlans = await db.subscriptionPlan.findMany({
+    where: { active: true },
+    orderBy: { price: 'asc' },
+  });
+
   // Get usage
   const [fileUploads, chatMessages, exports] = await Promise.all([
     getUsage(userId, UsageType.file_upload),
@@ -41,6 +48,10 @@ export default async function DashboardPage() {
   ]);
 
   const limits = await getUserLimits(userId);
+
+  const fileUploadPercent = limits.fileUploads === -1 ? 0 : (fileUploads / limits.fileUploads) * 100;
+  const chatPercent = limits.chatMessages === -1 ? 0 : (chatMessages / limits.chatMessages) * 100;
+  const exportPercent = limits.documentExports === -1 ? 0 : (exports / limits.documentExports) * 100;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -65,6 +76,7 @@ export default async function DashboardPage() {
                   Next billing: {new Date(subscription.current_period_end).toLocaleDateString()}
                 </p>
               )}
+              <ChangePlan currentPlanId={plan.id} allPlans={allPlans} />
             </div>
           ) : (
             <div>
@@ -89,6 +101,9 @@ export default async function DashboardPage() {
               {fileUploads} / {limits.fileUploads === -1 ? '∞' : limits.fileUploads}
             </div>
             <p className="text-sm text-gray-600">This month</p>
+            {fileUploadPercent > 80 && (
+              <p className="text-sm text-red-600 font-semibold">Warning: Approaching limit</p>
+            )}
           </CardContent>
         </Card>
 
@@ -101,6 +116,9 @@ export default async function DashboardPage() {
               {chatMessages} / {limits.chatMessages === -1 ? '∞' : limits.chatMessages}
             </div>
             <p className="text-sm text-gray-600">This month</p>
+            {chatPercent > 80 && (
+              <p className="text-sm text-red-600 font-semibold">Warning: Approaching limit</p>
+            )}
           </CardContent>
         </Card>
 
@@ -113,6 +131,9 @@ export default async function DashboardPage() {
               {exports} / {limits.documentExports === -1 ? '∞' : limits.documentExports}
             </div>
             <p className="text-sm text-gray-600">This month</p>
+            {exportPercent > 80 && (
+              <p className="text-sm text-red-600 font-semibold">Warning: Approaching limit</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -128,6 +149,9 @@ export default async function DashboardPage() {
           </Link>
           <Link href="/upload">
             <Button variant="outline" className="w-full">Upload Document</Button>
+          </Link>
+          <Link href="/billing">
+            <Button variant="outline" className="w-full">View Billing</Button>
           </Link>
           {plan?.name !== 'Premium' && (
             <Link href="/pricing">
